@@ -43,10 +43,14 @@ body {
 
 .main-title {
     font-size: clamp(3.5rem, 10vw, 7rem);
-    font-weight: 700; line-height: 1;
+    font-weight: 700;
+    line-height: 1;
     background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    margin-bottom: 1rem; animation-delay: var(--animation-stagger);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 1rem;
+    animation-delay: var(--animation-stagger);
 }
 
 .animated-text-container {
@@ -61,9 +65,14 @@ body {
 .animated-text-fader { position: relative; height: 100%; }
 .animated-text-fader span {
     background: linear-gradient(90deg, var(--secondary-color), var(--primary-color));
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    font-weight: 600; position: absolute; left: 0;
-    opacity: 0; animation: text-fade 12s infinite;
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 600;
+    position: absolute;
+    left: 0;
+    opacity: 0;
+    animation: text-fade 12s infinite;
 }
 .animated-text-fader span:nth-child(1) { animation-delay: 0s; }
 .animated-text-fader span:nth-child(2) { animation-delay: 4s; }
