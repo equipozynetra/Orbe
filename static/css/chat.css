@@ -1,0 +1,63 @@
+:root {
+    --bg-color: #0b0a14;
+    --primary-color: #8a3ffc;
+    --secondary-color: #33b1ff;
+    --text-color: #f4f4f4;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    text-align: center;
+    padding: 1rem; /* Añadimos un poco de padding base */
+}
+
+.chat-container {
+    max-width: 600px;
+}
+
+.chat-container h1 {
+    font-size: 2.5rem;
+    font-weight: 600;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 1rem;
+}
+
+.chat-container p {
+    font-size: 1.2rem;
+    opacity: 0.8;
+    margin-bottom: 2rem;
+}
+
+.logout-button {
+    display: inline-block;
+    padding: 12px 30px;
+    border: 1px solid var(--primary-color);
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 600;
+    border-radius: 50px;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.logout-button:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+/* --- Responsive Design (Media Queries) --- */
+@media (max-width: 600px) {
+    .chat-container h1 {
+        font-size: 1.8rem; /* Hacemos el título más pequeño en móviles */
+    }
+    .chat-container p {
+        font-size: 1rem; /* Y el párrafo también */
+    }
+}

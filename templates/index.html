@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orbe - Tu Asistente Inteligente</title>
+    
+    <!-- ANTES: <link rel="stylesheet" href="css/style.css"> -->
+    <!-- AHORA: Usamos url_for para generar la ruta correcta -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div class="container">
+
+        <main class="hero-section">
+            
+            <div class="hero-text">
+                <h1 class="main-title">ORBE</h1>
+                
+                <div class="animated-text-container">
+                    <p>Experto en:</p>
+                    <div class="animated-text-fader">
+                        <span>Creación de Páginas Web</span>
+                        <span>Mantenimiento y Soporte</span>
+                        <span>Automatización a Medida</span>
+                    </div>
+                </div>
+            
+                <p class="description">
+                    Orbe es tu asistente inteligente, diseñado para convertir visión en acción.
+                    Impulsado por la tecnología de Zynetra, Orbe domina las herramientas claves para potenciar tu
+                    crecimiento, desde la ideación estratégica hasta la ejecución precisa.
+                    Más que un copiloto, es tu aliado digital en la construcción de proyectos sólidos, diferenciados y
+                    preparados para el futuro.
+                </p>
+                
+                <!-- ANTES: <a href="login.html" ...> -->
+                <!-- AHORA: Usamos url_for para generar la ruta a nuestra página de login -->
+                <a href="{{ url_for('login_page') }}" class="cta-button">Iniciar una conversación</a>
+            </div>
+
+            <div class="hero-visual">
+                <div id="orb-container" class="orb-container">
+                    <div class="orb"></div>
+                </div>
+            </div>
+
+        </main>
+
+        <footer class="main-footer">
+            <p>&copy; 2024 Orbe. || Construyendo el futuro.</p>
+        </footer>
+
+    </div>
+
+    <!-- ANTES: <audio src="audios/background-music.mp3"></audio> -->
+    <!-- AHORA: Usamos url_for para generar la ruta correcta -->
+    <audio id="background-music" loop src="{{ url_for('static', filename='audios/background-music.mp3') }}"></audio>
+
+    <!-- ANTES: <script src="js/script.js"></script> -->
+    <!-- AHORA: Usamos url_for para generar la ruta correcta -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+
+</body>
+</html>

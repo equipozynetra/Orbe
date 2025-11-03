@@ -1,0 +1,144 @@
+:root {
+    --bg-color: #0b0a14;
+    --primary-color: #8a3ffc;
+    --secondary-color: #33b1ff;
+    --text-color: #f4f4f4;
+    --text-color-muted: #c0c0c0;
+    --animation-stagger: 200ms;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    min-height: 100vh;
+    padding: 2rem;
+    overflow-x: hidden;
+    background-image: radial-gradient(circle at 10% 20%, rgba(138, 63, 252, 0.15), transparent 30%),
+                      radial-gradient(circle at 80% 90%, rgba(51, 177, 255, 0.15), transparent 30%);
+    user-select: none; -webkit-user-select: none; -moz-user-select: none;
+}
+
+.container { width: 100%; max-width: 1200px; margin: 0 auto; }
+
+.hero-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4rem;
+    padding: 2rem 0;
+    min-height: calc(100vh - 4rem);
+}
+
+.hero-text { flex: 1; max-width: 600px; text-align: left; }
+
+.main-title, .animated-text-container, .description, .cta-button {
+    opacity: 0;
+    animation: reveal 1s ease-out forwards;
+}
+
+.main-title {
+    font-size: clamp(3.5rem, 10vw, 7rem);
+    font-weight: 700; line-height: 1;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    margin-bottom: 1rem; animation-delay: var(--animation-stagger);
+}
+
+.animated-text-container {
+    display: grid; grid-template-columns: auto 1fr;
+    align-items: baseline; gap: 0.75rem; font-size: 1.2rem;
+    font-weight: 400; color: var(--text-color-muted);
+    margin-bottom: 2rem; height: 1.8rem;
+    animation-delay: calc(var(--animation-stagger) * 2);
+}
+
+.animated-text-container p { margin: 0; white-space: nowrap; }
+.animated-text-fader { position: relative; height: 100%; }
+.animated-text-fader span {
+    background: linear-gradient(90deg, var(--secondary-color), var(--primary-color));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    font-weight: 600; position: absolute; left: 0;
+    opacity: 0; animation: text-fade 12s infinite;
+}
+.animated-text-fader span:nth-child(1) { animation-delay: 0s; }
+.animated-text-fader span:nth-child(2) { animation-delay: 4s; }
+.animated-text-fader span:nth-child(3) { animation-delay: 8s; }
+
+.description {
+    font-size: 1.1rem; font-weight: 300; line-height: 1.8;
+    color: var(--text-color-muted); margin-bottom: 2.5rem;
+    animation-delay: calc(var(--animation-stagger) * 3);
+}
+
+.cta-button {
+    display: inline-block;
+    background-image: linear-gradient(90deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: white; padding: 16px 40px; border-radius: 50px; text-decoration: none;
+    font-weight: 600; font-size: 1.1rem;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    animation-delay: calc(var(--animation-stagger) * 4);
+}
+.cta-button:hover {
+    transform: translateY(-5px) scale(1.05);
+    box-shadow: 0 15px 30px rgba(138, 63, 252, 0.3);
+}
+
+.hero-visual { flex: 1; display: flex; justify-content: center; align-items: center; perspective: 1000px; }
+.orb-container {
+    transition: transform 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+    animation: reveal 1s ease-out forwards;
+    animation-delay: calc(var(--animation-stagger) * 2);
+}
+.orb {
+    width: clamp(250px, 40vw, 400px); height: clamp(250px, 40vw, 400px);
+    background: radial-gradient(circle at 30% 30%, var(--primary-color), var(--secondary-color) 90%);
+    border-radius: 50%; filter: blur(50px);
+    animation: orb-breathe 12s infinite ease-in-out;
+}
+
+@keyframes reveal { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes text-fade { 0%, 25%, 100% { opacity: 0; } 5%, 20% { opacity: 1; } }
+@keyframes orb-breathe {
+    0%   { transform: scale(1)   rotate(0deg); }
+    50%  { transform: scale(1.1) rotate(180deg); }
+    100% { transform: scale(1)   rotate(360deg); }
+}
+
+/* --- Responsive Design (Media Queries) --- */
+@media (max-width: 960px) {
+    body { padding: 1rem; }
+    .hero-section {
+        flex-direction: column;
+        text-align: center;
+        gap: 2rem;
+        min-height: calc(100vh - 2rem);
+    }
+    .hero-text {
+        text-align: center;
+        order: 2;
+    }
+    .hero-visual {
+        order: 1;
+        margin-bottom: 2rem;
+    }
+
+    /* --- CORRECCIÓN CLAVE --- */
+    .animated-text-container {
+        display: flex; /* Cambiamos a flexbox */
+        flex-direction: column; /* Apilamos verticalmente */
+        align-items: center; /* Centramos los elementos */
+        height: auto; /* Dejamos que la altura se ajuste al contenido */
+        gap: 0.5rem; /* Espacio entre "Experto en:" y el texto animado */
+    }
+    .animated-text-fader {
+        /* Necesitamos darle una altura fija para que la animación de slide vertical funcione */
+        height: 1.8rem;
+        width: 100%;
+    }
+}
