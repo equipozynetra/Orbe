@@ -8,3 +8,6 @@ database.db
 # Entornos virtuales
 .venv/
 venv/
+
+# Archivo de secretos locales
+.env

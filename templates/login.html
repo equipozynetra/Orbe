@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -15,8 +14,9 @@
     <div class="login-container">
         <div class="form-header"><h1>Accede a Orbe</h1></div>
         <div class="form-flipper">
-            <!-- Formulario de Iniciar Sesión -->
-            <div id="login-form-wrapper" class="form-wrapper">
+
+            <!-- Panel 1: Iniciar Sesión (Visible por defecto con la clase 'active') -->
+            <div id="login-form-wrapper" class="form-wrapper active">
                 <h2>Iniciar Sesión</h2>
                 <div id="login-message-area" class="message-area"></div>
                 <form id="login-form">
@@ -27,12 +27,14 @@
                             <input type="password" id="login-password" required autocomplete="current-password">
                             <i class="fa-solid fa-eye-slash password-toggle"></i>
                         </div>
+                        <a href="#" id="show-forgot" class="forgot-password-link">He olvidado mi contraseña</a>
                     </div>
                     <button type="submit" class="submit-button">Continuar</button>
                 </form>
                 <p class="toggle-text">¿No tienes cuenta? <a href="#" id="show-register">Regístrate</a></p>
             </div>
-            <!-- Formulario de Registro -->
+
+            <!-- Panel 2: Registro -->
             <div id="register-form-wrapper" class="form-wrapper">
                 <h2>Crear Cuenta</h2>
                 <div id="register-message-area" class="message-area"></div>
@@ -46,14 +48,8 @@
                             <i class="fa-solid fa-eye-slash password-toggle"></i>
                         </div>
                         <div class="strength-bar"><div id="strength-fill" class="strength-fill"></div></div>
-                        <ul id="password-policy">
-                            <li id="policy-length">Mínimo 8 caracteres</li>
-                            <li id="policy-uppercase">Una mayúscula</li>
-                            <li id="policy-number">Un número</li>
-                            <li id="policy-special">Un carácter especial</li>
-                        </ul>
+                        <ul id="password-policy"><li id="policy-length">Mínimo 8 caracteres</li><li id="policy-uppercase">Una mayúscula</li><li id="policy-number">Un número</li><li id="policy-special">Un carácter especial</li></ul>
                     </div>
-                    <!-- CAMPO "CONFIRMAR CONTRASEÑA" AÑADIDO DE NUEVO -->
                     <div class="form-group">
                         <label for="register-confirm-password">Confirmar Contraseña</label>
                         <div class="password-wrapper">
@@ -64,6 +60,18 @@
                     <button type="submit" id="register-submit-button" class="submit-button" disabled>Crear cuenta</button>
                 </form>
                 <p class="toggle-text">¿Ya tienes cuenta? <a href="#" id="show-login">Inicia sesión</a></p>
+            </div>
+
+            <!-- Panel 3: Recuperar Contraseña -->
+            <div id="forgot-form-wrapper" class="form-wrapper">
+                <h2>Recuperar Cuenta</h2>
+                <div id="forgot-message-area" class="message-area"></div>
+                <p class="form-description">Introduce tu correo y te enviaremos un enlace para restablecer tu contraseña.</p>
+                <form id="forgot-form">
+                    <div class="form-group"><label for="forgot-email">Correo Electrónico</label><input type="email" id="forgot-email" required autocomplete="email"></div>
+                    <button type="submit" class="submit-button">Enviar Enlace</button>
+                </form>
+                <p class="toggle-text"><a href="#" id="back-to-login">Volver a Iniciar Sesión</a></p>
             </div>
         </div>
     </div>

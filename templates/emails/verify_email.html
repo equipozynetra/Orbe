@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verificación de Cuenta - Orbe</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .header {
+            color: #8a3ffc;
+            font-size: 24px;
+            text-align: center;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 20px;
+        }
+        .content {
+            margin: 20px 0;
+            line-height: 1.6;
+            font-size: 16px;
+        }
+        .button {
+            display: block;
+            width: 200px;
+            margin: 30px auto;
+            padding: 15px;
+            background-color: #8a3ffc;
+            color: #ffffff;
+            text-align: center;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .footer {
+            margin-top: 30px;
+            font-size: 12px;
+            color: #777;
+            text-align: center;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+        .url-text {
+            word-break: break-all;
+            font-size: 12px;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="header">¡Un último paso, {{ name }}!</h1>
+        <div class="content">
+            <p>Gracias por unirte a Orbe. Para garantizar la seguridad de tu cuenta y completar tu registro, por favor, verifica tu dirección de correo electrónico.</p>
+            <p>Haz clic en el botón de abajo para activar tu cuenta. Este enlace es válido durante los próximos 15 minutos.</p>
+            <a href="{{ confirm_url }}" class="button">Verificar Correo y Activar</a>
+            <p>Si tienes problemas con el botón, puedes copiar y pegar esta URL en tu navegador:</p>
+            <p class="url-text">{{ confirm_url }}</p>
+        </div>
+        <div class="footer">
+            <p>Si no has intentado registrarte en Orbe, puedes ignorar este mensaje de forma segura.</p>
+        </div>
+    </div>
+</body>
+</html>
