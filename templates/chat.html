@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Orbe - Chat</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
-    <!-- Usaremos iconos de Phosphor, más modernos y estilizados -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -26,20 +25,14 @@
             </div>
 
             <nav class="chat-history">
-                <!-- Ejemplos de chats. Más adelante los generaremos dinámicamente -->
                 <ul>
-                    <li class="history-item active">
+                    <!-- Solo dejamos un chat de ejemplo -->
+                    <!-- El 'style="--i: 0;"' es para la animación de entrada escalonada -->
+                    <li class="history-item active" style="--i: 0;">
                         <i class="ph ph-chat-text"></i>
-                        <span class="history-title">Ideas para un proyecto de IA</span>
+                        <span class="history-title">Primer Chat con Orbe</span>
                     </li>
-                    <li class="history-item">
-                        <i class="ph ph-chat-text"></i>
-                        <span class="history-title">Explicación de Python Flask</span>
-                    </li>
-                    <li class="history-item">
-                        <i class="ph ph-chat-text"></i>
-                        <span class="history-title">Plan de marketing digital para una startup</span>
-                    </li>
+                    <!-- Más chats se añadirán aquí dinámicamente en el futuro -->
                 </ul>
             </nav>
 
@@ -57,7 +50,6 @@
         <!-- =========== Área Principal del Chat =========== -->
         <main class="main-content">
             
-            <!-- Pantalla de bienvenida (se ocultará cuando haya un chat activo) -->
             <div class="welcome-screen">
                 <div class="logo-welcome">
                     <i class="ph-bold ph-planet"></i>
@@ -82,9 +74,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- El área de mensajes del chat irá aquí más adelante -->
-            <!-- <div class="chat-messages-container"></div> -->
 
             <div class="chat-input-area">
                 <div class="input-wrapper">

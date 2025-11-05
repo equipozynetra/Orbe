@@ -45,24 +45,48 @@ body {
 
 .new-chat-button {
     background: none; border: none; color: var(--text-dim);
-    font-size: 1.75rem; cursor: pointer; transition: color 0.2s;
+    font-size: 1.75rem; cursor: pointer;
+    transition: color 0.2s, transform 0.2s;
 }
-.new-chat-button:hover { color: var(--text-bright); }
+.new-chat-button:hover {
+    color: var(--text-bright);
+    transform: rotate(90deg); /* Animación de giro al botón + */
+}
 
 .chat-history {
     flex-grow: 1;
     overflow-y: auto;
     display: flex; flex-direction: column; gap: 0.5rem;
 }
+
+/* --- ANIMACIONES PARA EL HISTORIAL --- */
 .history-item {
     display: flex; align-items: center; gap: 0.75rem;
     padding: 0.75rem 1rem; border-radius: 8px;
     color: var(--text-dim);
     cursor: pointer;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    transition: background-color 0.2s, color 0.2s;
+    /* Transiciones mejoradas */
+    transition: background-color 0.2s, color 0.2s, transform 0.2s ease-out;
+    /* Animación de entrada */
+    opacity: 0;
+    transform: translateX(-20px);
+    animation: slideIn 0.5s ease-out forwards;
+    /* Usamos la variable --i del HTML para el retraso */
+    animation-delay: calc(var(--i) * 100ms);
 }
-.history-item:hover { background-color: var(--bg-space); color: var(--text-bright); }
+@keyframes slideIn {
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.history-item:hover {
+    background-color: var(--bg-space);
+    color: var(--text-bright);
+    transform: translateX(5px); /* Efecto de movimiento al pasar el ratón */
+}
 .history-item.active {
     background-color: var(--bg-nebula);
     color: var(--text-bright);
@@ -123,11 +147,12 @@ body {
     background-color: var(--bg-space);
     border: 1px solid var(--border-subtle);
     padding: 1rem; border-radius: 12px; cursor: pointer;
-    transition: background-color 0.2s, border-color 0.2s;
+    transition: background-color 0.2s, border-color 0.2s, transform 0.2s;
 }
 .suggestion-box:hover {
     background-color: var(--bg-nebula);
     border-color: var(--primary-glow);
+    transform: translateY(-5px); /* Efecto de elevación */
 }
 .suggestion-box h3 { font-size: 1rem; font-weight: 500; }
 .suggestion-box p { font-size: 0.9rem; color: var(--text-dim); }
@@ -141,7 +166,7 @@ body {
 .input-wrapper {
     position: relative;
     display: flex;
-    align-items: flex-end; /* Alinea el botón con la base del textarea */
+    align-items: flex-end;
     background-color: var(--bg-nebula);
     border-radius: 16px;
     padding: 0.75rem 1rem;
@@ -153,7 +178,7 @@ body {
     font-family: 'Poppins', sans-serif;
     resize: none;
     line-height: 1.5;
-    max-height: 200px; /* Limita el crecimiento del textarea */
+    max-height: 200px;
 }
 #send-button {
     background: none; border: none;
