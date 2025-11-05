@@ -25,11 +25,28 @@
             </div>
 
             <nav class="chat-history">
+                <!-- Indicador de límite de chats -->
+                <div class="chat-limit-indicator">
+                    <span>Chats</span>
+                    <span>{{ chat_count }} / {{ chat_limit }}</span>
+                </div>
                 <ul>
-                    <li class="history-item active" style="--i: 0;">
-                        <i class="ph ph-chat-text"></i>
-                        <span class="history-title">Primer Chat con Orbe</span>
+                    <!-- Bucle para generar dinámicamente el historial de chats -->
+                    {% for chat in chats %}
+                    <li class="history-item {% if chat[0] == active_chat_id %}active{% endif %}" data-chat-id="{{ chat[0] }}" style="--i: {{ loop.index0 }};">
+                        
+                        <!-- El enlace principal para navegar al chat -->
+                        <a href="{{ url_for('chat_page', chat_id=chat[0]) }}" class="chat-link">
+                            <i class="ph ph-chat-text"></i>
+                            <span class="history-title">{{ chat[1] }}</span>
+                        </a>
+                        
+                        <!-- El botón para eliminar el chat -->
+                        <button class="delete-chat-button" title="Eliminar chat">
+                            <i class="ph ph-trash"></i>
+                        </button>
                     </li>
+                    {% endfor %}
                 </ul>
             </nav>
 
@@ -47,36 +64,41 @@
         <!-- =========== Área Principal del Chat =========== -->
         <main class="main-content">
             
-            <div class="welcome-screen">
-                <div class="logo-welcome">
-                    <i class="ph-bold ph-planet"></i>
-                    <span>ORBE</span>
-                </div>
-                <!-- TEXTOS ACTUALIZADOS PARA SER MÁS AMIGABLES -->
-                <div class="prompt-suggestions">
-                    <div class="suggestion-box">
-                        <h3>Planifica un viaje</h3>
-                        <p>a las Islas Canarias para una familia de 4</p>
+            <!-- Lógica Corregida: Si la lista de mensajes está vacía, muestra la bienvenida -->
+            {% if not messages %}
+                <div class="welcome-screen">
+                    <div class="logo-welcome">
+                        <i class="ph-bold ph-planet"></i>
+                        <span>ORBE</span>
                     </div>
-                    <div class="suggestion-box">
-                        <h3>Ayúdame a entender</h3>
-                        <p>qué es una API, como si tuviera 10 años</p>
-                    </div>
-                    <div class="suggestion-box">
-                        <h3>Dame una receta</h3>
-                        <p>fácil y rápida para una cena saludable</p>
-                    </div>
-                    <div class="suggestion-box">
-                        <h3>Escribe una canción</h3>
-                        <p>sobre el espacio y las estrellas</p>
+                    <div class="prompt-suggestions">
+                        <div class="suggestion-box"><h3>Planifica un viaje</h3><p>a las Islas Canarias para una familia de 4</p></div>
+                        <div class="suggestion-box"><h3>Ayúdame a entender</h3><p>qué es una API, como si tuviera 10 años</p></div>
+                        <div class="suggestion-box"><h3>Dame una receta</h3><p>fácil y rápida para una cena saludable</p></div>
+                        <div class="suggestion-box"><h3>Escribe una canción</h3><p>sobre el espacio y las estrellas</p></div>
                     </div>
                 </div>
-            </div>
+            {% else %}
+                <!-- Si hay mensajes, los muestra -->
+                <div class="chat-messages-container">
+                    {% for message in messages %}
+                    <div class="message-bubble {{ message[0] }}">
+                        <div class="avatar-bubble">
+                            {% if message[0] == 'assistant' %}
+                                <i class="ph-bold ph-planet"></i>
+                            {% else %}
+                                <span>{{ user.name[0] | upper }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="message-content">{{ message[1] | safe }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
 
             <div class="chat-input-area">
                 <div class="input-wrapper">
                     <textarea id="user-input" placeholder="Envía un mensaje a Orbe..." rows="1"></textarea>
-                    <!-- El botón ahora estará deshabilitado por defecto -->
                     <button type="submit" id="send-button" title="Enviar mensaje" disabled>
                         <i class="ph-bold ph-paper-plane-right"></i>
                     </button>
@@ -85,6 +107,9 @@
             </div>
         </main>
     </div>
+
+    <!-- Contenedor para las notificaciones personalizadas -->
+    <div id="notification-container"></div>
 
     <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
 </body>
