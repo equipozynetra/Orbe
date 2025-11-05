@@ -4,18 +4,39 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title }} - Orbe</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
+    
+    <!-- ARREGLO: Enlazamos al CSS del login para un estilo consistente -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="chat-container">
-        <h1>{{ title }}</h1>
-        <p>{{ message }}</p>
+
+    <!-- Reutilizamos el fondo animado de la página de login -->
+    <div class="background-orb"></div>
+
+    <!-- Reutilizamos el contenedor de "tarjeta de cristal" del login -->
+    <div class="login-container" style="text-align: center;">
+        
+        <!-- Usamos el estilo de cabecera del formulario -->
+        <div class="form-header">
+            <h1>{{ title }}</h1>
+        </div>
+        
+        <!-- Usamos el estilo de descripción del formulario para el mensaje -->
+        <p class="form-description" style="margin-bottom: 2rem;">
+            {{ message }}
+        </p>
+        
+        <!-- Si es un mensaje de éxito, mostramos el botón para ir al login -->
         {% if success %}
-            <a href="{{ url_for('login_page') }}" class="logout-button" style="border-color: var(--success-color); color: var(--success-color);">Ir a Iniciar Sesión</a>
+            <!-- Reutilizamos el estilo del botón principal -->
+            <a href="{{ url_for('login_page') }}" class="submit-button" style="text-decoration: none;">Ir a Iniciar Sesión</a>
         {% endif %}
+
     </div>
+    
 </body>
 </html>
