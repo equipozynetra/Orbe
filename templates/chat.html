@@ -5,15 +5,84 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Orbe - Chat</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="chat-container">
-        <h1>¡Bienvenido de nuevo, {{ user.name }}!</h1>
-        <p>Estás dentro de Orbe. Pronto aquí estará la interfaz del chat.</p>
-        <a href="{{ url_for('logout') }}" class="logout-button">Cerrar Sesión</a>
+
+    <div class="chat-layout">
+        <!-- =========== Barra Lateral (Sidebar) =========== -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="#" class="new-chat-button">
+                    <i class="fa-solid fa-plus"></i>
+                    Nuevo Chat
+                </a>
+            </div>
+
+            <nav class="chat-history">
+                <p class="history-title">Historial</p>
+                <ul>
+                    <!-- Ejemplos de chats. Más adelante los generaremos dinámicamente -->
+                    <li><a href="#" class="active"><i class="fa-regular fa-message"></i> Ideas para proyecto web</a></li>
+                    <li><a href="#"><i class="fa-regular fa-message"></i> Explicación de Python Flask</a></li>
+                    <li><a href="#"><i class="fa-regular fa-message"></i> Plan de marketing digital</a></li>
+                </ul>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-menu">
+                    <i class="fa-solid fa-user"></i>
+                    <span>{{ user.name }}</span>
+                </div>
+                <a href="{{ url_for('logout') }}" class="logout-link" title="Cerrar Sesión">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                </a>
+            </div>
+        </aside>
+
+        <!-- =========== Área Principal del Chat =========== -->
+        <main class="main-content">
+            
+            <!-- Pantalla de bienvenida (se ocultará cuando haya un chat activo) -->
+            <div class="welcome-screen">
+                <div class="logo-welcome">ORBE</div>
+                <div class="prompt-suggestions">
+                    <div class="suggestion-box">
+                        <h3>Dame ideas de negocio</h3>
+                        <p>para un desarrollador web freelance</p>
+                    </div>
+                    <div class="suggestion-box">
+                        <h3>Explícame un concepto</h3>
+                        <p>como la computación cuántica en términos simples</p>
+                    </div>
+                    <div class="suggestion-box">
+                        <h3>Escribe un email</h3>
+                        <p>para contactar a un potencial cliente</p>
+                    </div>
+                    <div class="suggestion-box">
+                        <h3>Crea un plan de estudio</h3>
+                        <p>para aprender React en 30 días</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- El área de mensajes del chat irá aquí más adelante -->
+            <!-- <div class="chat-messages"></div> -->
+
+            <div class="chat-input-area">
+                <form id="chat-form">
+                    <input type="text" id="user-input" placeholder="Envía un mensaje a Orbe..." autocomplete="off">
+                    <button type="submit" title="Enviar mensaje">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </form>
+                <p class="disclaimer">Orbe puede cometer errores. Considera verificar la información importante.</p>
+            </div>
+        </main>
     </div>
+
+    <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
 </body>
 </html>
