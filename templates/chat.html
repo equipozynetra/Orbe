@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Orbe - Chat</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Usaremos iconos de Phosphor, más modernos y estilizados -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
 </head>
@@ -15,29 +16,40 @@
         <!-- =========== Barra Lateral (Sidebar) =========== -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <a href="#" class="new-chat-button">
-                    <i class="fa-solid fa-plus"></i>
-                    Nuevo Chat
-                </a>
+                <div class="logo">
+                    <i class="ph-bold ph-planet"></i>
+                    <h1>ORBE</h1>
+                </div>
+                <button class="new-chat-button" title="Nuevo Chat">
+                    <i class="ph-bold ph-plus"></i>
+                </button>
             </div>
 
             <nav class="chat-history">
-                <p class="history-title">Historial</p>
+                <!-- Ejemplos de chats. Más adelante los generaremos dinámicamente -->
                 <ul>
-                    <!-- Ejemplos de chats. Más adelante los generaremos dinámicamente -->
-                    <li><a href="#" class="active"><i class="fa-regular fa-message"></i> Ideas para proyecto web</a></li>
-                    <li><a href="#"><i class="fa-regular fa-message"></i> Explicación de Python Flask</a></li>
-                    <li><a href="#"><i class="fa-regular fa-message"></i> Plan de marketing digital</a></li>
+                    <li class="history-item active">
+                        <i class="ph ph-chat-text"></i>
+                        <span class="history-title">Ideas para un proyecto de IA</span>
+                    </li>
+                    <li class="history-item">
+                        <i class="ph ph-chat-text"></i>
+                        <span class="history-title">Explicación de Python Flask</span>
+                    </li>
+                    <li class="history-item">
+                        <i class="ph ph-chat-text"></i>
+                        <span class="history-title">Plan de marketing digital para una startup</span>
+                    </li>
                 </ul>
             </nav>
 
             <div class="sidebar-footer">
                 <div class="user-menu">
-                    <i class="fa-solid fa-user"></i>
-                    <span>{{ user.name }}</span>
+                    <div class="avatar"><span>{{ user.name[0] | upper }}</span></div>
+                    <span class="username">{{ user.name }}</span>
                 </div>
                 <a href="{{ url_for('logout') }}" class="logout-link" title="Cerrar Sesión">
-                    <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                    <i class="ph-bold ph-sign-out"></i>
                 </a>
             </div>
         </aside>
@@ -47,7 +59,10 @@
             
             <!-- Pantalla de bienvenida (se ocultará cuando haya un chat activo) -->
             <div class="welcome-screen">
-                <div class="logo-welcome">ORBE</div>
+                <div class="logo-welcome">
+                    <i class="ph-bold ph-planet"></i>
+                    <span>ORBE</span>
+                </div>
                 <div class="prompt-suggestions">
                     <div class="suggestion-box">
                         <h3>Dame ideas de negocio</h3>
@@ -69,15 +84,15 @@
             </div>
 
             <!-- El área de mensajes del chat irá aquí más adelante -->
-            <!-- <div class="chat-messages"></div> -->
+            <!-- <div class="chat-messages-container"></div> -->
 
             <div class="chat-input-area">
-                <form id="chat-form">
-                    <input type="text" id="user-input" placeholder="Envía un mensaje a Orbe..." autocomplete="off">
-                    <button type="submit" title="Enviar mensaje">
-                        <i class="fa-solid fa-paper-plane"></i>
+                <div class="input-wrapper">
+                    <textarea id="user-input" placeholder="Envía un mensaje a Orbe..." rows="1"></textarea>
+                    <button type="submit" id="send-button" title="Enviar mensaje">
+                        <i class="ph-bold ph-paper-plane-right"></i>
                     </button>
-                </form>
+                </div>
                 <p class="disclaimer">Orbe puede cometer errores. Considera verificar la información importante.</p>
             </div>
         </main>
