@@ -26,13 +26,10 @@
 
             <nav class="chat-history">
                 <ul>
-                    <!-- Solo dejamos un chat de ejemplo -->
-                    <!-- El 'style="--i: 0;"' es para la animación de entrada escalonada -->
                     <li class="history-item active" style="--i: 0;">
                         <i class="ph ph-chat-text"></i>
                         <span class="history-title">Primer Chat con Orbe</span>
                     </li>
-                    <!-- Más chats se añadirán aquí dinámicamente en el futuro -->
                 </ul>
             </nav>
 
@@ -55,22 +52,23 @@
                     <i class="ph-bold ph-planet"></i>
                     <span>ORBE</span>
                 </div>
+                <!-- TEXTOS ACTUALIZADOS PARA SER MÁS AMIGABLES -->
                 <div class="prompt-suggestions">
                     <div class="suggestion-box">
-                        <h3>Dame ideas de negocio</h3>
-                        <p>para un desarrollador web freelance</p>
+                        <h3>Planifica un viaje</h3>
+                        <p>a las Islas Canarias para una familia de 4</p>
                     </div>
                     <div class="suggestion-box">
-                        <h3>Explícame un concepto</h3>
-                        <p>como la computación cuántica en términos simples</p>
+                        <h3>Ayúdame a entender</h3>
+                        <p>qué es una API, como si tuviera 10 años</p>
                     </div>
                     <div class="suggestion-box">
-                        <h3>Escribe un email</h3>
-                        <p>para contactar a un potencial cliente</p>
+                        <h3>Dame una receta</h3>
+                        <p>fácil y rápida para una cena saludable</p>
                     </div>
                     <div class="suggestion-box">
-                        <h3>Crea un plan de estudio</h3>
-                        <p>para aprender React en 30 días</p>
+                        <h3>Escribe una canción</h3>
+                        <p>sobre el espacio y las estrellas</p>
                     </div>
                 </div>
             </div>
@@ -78,7 +76,8 @@
             <div class="chat-input-area">
                 <div class="input-wrapper">
                     <textarea id="user-input" placeholder="Envía un mensaje a Orbe..." rows="1"></textarea>
-                    <button type="submit" id="send-button" title="Enviar mensaje">
+                    <!-- El botón ahora estará deshabilitado por defecto -->
+                    <button type="submit" id="send-button" title="Enviar mensaje" disabled>
                         <i class="ph-bold ph-paper-plane-right"></i>
                     </button>
                 </div>
