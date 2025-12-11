@@ -313,3 +313,36 @@
 .btn-confirm:hover { box-shadow: 0 0 15px #ff3b30; }
 
 @keyframes popIn { to { transform: scale(1); } }
+
+/* --- OPTIMIZACIÓN MÓVIL (CHAT) --- */
+@media (max-width: 768px) {
+    
+    .chat-workspace {
+        height: calc(100vh - 60px); /* Restar altura del menú inferior */
+    }
+
+    /* Ocultar historial en móvil (demasiado espacio) */
+    /* Podríamos poner un botón hamburguesa luego, por ahora simplificamos */
+    .sidebar .history-list, 
+    .sidebar .new-chat-container {
+        display: none !important;
+    }
+    
+    /* Input más accesible */
+    .input-area {
+        padding: 10px;
+        bottom: 60px; /* Subir input encima del menú */
+    }
+    
+    .input-wrapper input {
+        font-size: 16px; /* Evita zoom automático en iPhone */
+        padding: 12px 50px 12px 15px;
+    }
+
+    .messages-container {
+        padding: 1rem;
+        padding-bottom: 120px; /* Más espacio abajo */
+    }
+
+    .message { max-width: 90%; }
+}

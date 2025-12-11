@@ -259,3 +259,70 @@
     0% { filter: hue-rotate(0deg); }
     100% { filter: hue-rotate(360deg); }
 }
+
+/* --- OPTIMIZACIÓN MÓVIL (DASHBOARD) --- */
+@media (max-width: 768px) {
+    
+    /* 1. Sidebar se convierte en Bottom Nav */
+    .sidebar {
+        width: 100%;
+        position: fixed;
+        bottom: 0; left: 0;
+        height: 60px;
+        flex-direction: row;
+        justify-content: space-around;
+        padding: 5px;
+        z-index: 1000;
+        background: #0f0f12;
+        border-top: 1px solid var(--border-light);
+        border-right: none;
+    }
+
+    /* Ocultar cosas innecesarias del sidebar en móvil */
+    .sidebar-header, .sidebar-footer, .user-mini-profile {
+        display: none !important;
+    }
+
+    /* Menú Horizontal */
+    .nav-menu {
+        flex-direction: row;
+        margin-bottom: 0;
+        width: 100%;
+        justify-content: space-around;
+    }
+
+    .nav-item {
+        flex-direction: column;
+        font-size: 0.6rem;
+        padding: 5px;
+        gap: 2px;
+        text-align: center;
+    }
+
+    .nav-item .icon { font-size: 1.2rem; }
+
+    /* 2. Área Principal */
+    .main-workspace {
+        padding: 1rem;
+        padding-bottom: 80px; /* Espacio para el menú de abajo */
+        height: auto;
+        overflow: visible;
+    }
+
+    /* Header Móvil */
+    .top-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
+
+    /* Grid en una sola columna */
+    .content-grid {
+        grid-template-columns: 1fr; /* Todo en 1 columna */
+        gap: 15px;
+    }
+
+    /* Tarjetas */
+    .welcome-card h1 { font-size: 1.8rem; }
+    .card { padding: 1.5rem; }
+}

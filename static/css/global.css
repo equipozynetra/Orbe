@@ -72,3 +72,15 @@ a { text-decoration: none; color: inherit; transition: 0.3s; }
 /* --- ANIMACIONES GLOBALES --- */
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+/* --- RESPONSIVE BASE --- */
+@media (max-width: 768px) {
+    body { font-size: 14px; } /* Texto base un poco más pequeño */
+    
+    .layout, .dashboard-layout {
+        flex-direction: column; /* Apilar sidebar arriba del contenido */
+        padding: 0;
+        height: auto;
+        overflow-y: auto;
+    }
+}
