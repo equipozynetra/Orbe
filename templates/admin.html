@@ -2,46 +2,42 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ORBE | GOD MODE</title>
-    
-    <!-- Vinculamos estilos globales para fuentes y fondo -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/global.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;700&display=swap" rel="stylesheet">
 
     <style>
         /* --- ESTILOS EXCLUSIVOS DEL PANEL DIOS --- */
-        body {
-            overflow: hidden; /* Sin scroll para efecto app */
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        body { 
+            overflow-y: auto; /* Permitir scroll vertical si la lista es larga */
+            padding: 40px 0;
+            display: block; 
         }
 
         /* CORRECCIÓN DEL CLICK (z-index alto) */
         .admin-wrapper {
-            position: relative;
-            z-index: 100; /* ESTO ARREGLA EL PROBLEMA DE NO PODER ESCRIBIR */
-            width: 100%;
-            max-width: 600px;
-            padding: 20px;
+            position: relative; 
+            z-index: 100; /* Asegura que esté por encima del fondo animado */
+            width: 100%; max-width: 900px;
+            margin: 0 auto;
+            padding: 0 20px;
         }
 
         /* Tarjeta Principal */
         .god-card {
-            background: rgba(10, 10, 12, 0.9);
+            background: rgba(10, 10, 12, 0.95);
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 20px;
             padding: 3rem;
             backdrop-filter: blur(20px);
             box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
-            position: relative;
-            overflow: hidden;
+            margin-bottom: 2rem;
+            position: relative; overflow: hidden;
             animation: fadeIn 0.8s ease;
         }
 
-        /* Efecto de borde arcoíris sutil para el dueño */
-        .god-card::before {
+        /* Efecto de borde arcoíris para la tarjeta principal */
+        .god-card.main-card::before {
             content: '';
             position: absolute; top: 0; left: 0; right: 0; height: 4px;
             background: linear-gradient(90deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8, #ff0000);
@@ -52,66 +48,73 @@
         @keyframes rainbow { 0% { background-position: 0% 50%; } 100% { background-position: 100% 50%; } }
 
         /* Header */
-        .god-header { text-align: center; margin-bottom: 2.5rem; }
-        .god-header h1 { font-size: 2rem; letter-spacing: 4px; color: #fff; text-transform: uppercase; margin-bottom: 5px; }
-        .god-header p { color: #666; font-size: 0.8rem; letter-spacing: 2px; }
+        .god-header { text-align: center; margin-bottom: 30px; }
+        .god-header h1 { font-size: 2.5rem; letter-spacing: 5px; color: #fff; text-transform: uppercase; margin-bottom: 5px; text-shadow: 0 0 20px rgba(255,255,255,0.2); }
+        .god-header p { color: #666; font-size: 0.9rem; letter-spacing: 2px; }
+
+        /* Títulos de Sección */
+        .section-title { font-size: 1.2rem; color: #fff; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; letter-spacing: 2px; text-transform: uppercase; font-weight: bold; }
 
         /* Formularios */
-        .form-group { margin-bottom: 1.5rem; }
-        .form-label { display: block; color: var(--text-secondary); font-size: 0.75rem; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+        .form-row { display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap; }
+        .form-group { flex-grow: 1; min-width: 250px; }
         
         .god-input, .god-select {
-            width: 100%;
-            padding: 15px;
+            width: 100%; padding: 15px;
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #fff;
-            font-family: 'Space Grotesk', sans-serif;
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: 0.3s;
-            outline: none;
+            color: #fff; font-family: 'Space Grotesk', sans-serif;
+            border-radius: 8px; font-size: 1rem;
+            transition: 0.3s; outline: none;
         }
 
         .god-input:focus, .god-select:focus {
-            border-color: #fff;
-            background: rgba(255, 255, 255, 0.1);
+            border-color: #fff; background: rgba(255, 255, 255, 0.1);
             box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
         }
 
-        /* Opciones del Select con colores */
         option { background: #111; color: #fff; }
-        option[value="gold"] { color: #ffd700; }
-        option[value="elite"] { color: #00ffff; }
-        option[value="omega"] { color: #ff003c; font-weight: bold; }
 
-        /* Botón Ejecutar */
+        /* Botones */
         .btn-god {
-            width: 100%;
-            padding: 15px;
-            background: #fff;
-            color: #000;
-            font-weight: 800;
-            border: none;
-            border-radius: 8px;
-            font-size: 1rem;
-            letter-spacing: 2px;
-            cursor: pointer;
-            transition: 0.3s;
-            margin-top: 10px;
-            text-transform: uppercase;
+            padding: 15px 30px; background: #fff; color: #000; font-weight: 800; border: none;
+            border-radius: 8px; cursor: pointer; transition: 0.3s; text-transform: uppercase; letter-spacing: 1px;
         }
+        .btn-god:hover { background: #ccc; box-shadow: 0 0 30px rgba(255, 255, 255, 0.4); transform: scale(1.02); }
 
-        .btn-god:hover {
-            background: #ccc;
-            box-shadow: 0 0 30px rgba(255, 255, 255, 0.4);
-            transform: scale(1.02);
+        /* TABLA DE USUARIOS */
+        .user-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-top: 10px; }
+        .user-table th { text-align: left; padding: 12px; color: #888; font-size: 0.75rem; border-bottom: 1px solid #333; text-transform: uppercase; }
+        .user-table td { padding: 15px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #ddd; }
+        .user-table tr:hover { background: rgba(255,255,255,0.02); }
+
+        /* Indicadores de Estado */
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+        .online { background: #00ff00; box-shadow: 0 0 8px #00ff00; }
+        .offline { background: #555; }
+
+        /* Badges de Tabla */
+        .badge { padding: 3px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; text-transform: uppercase; }
+        .b-free { background: #333; color: #aaa; border: 1px solid #555; }
+        .b-gold { background: #ffd700; color: #000; }
+        .b-elite { background: #00ffff; color: #000; }
+        .b-omega { background: #ff003c; color: #fff; }
+        .b-owner { background: #fff; color: #000; box-shadow: 0 0 10px #fff; }
+        .b-admin { background: #9d00ff; color: #fff; }
+        .b-support { background: #00ff00; color: #000; }
+
+        /* ZONA DE PELIGRO */
+        .danger-zone { border: 1px solid #ff3b30; background: rgba(255, 59, 48, 0.05); margin-top: 40px; }
+        .danger-title { color: #ff3b30; border-color: #ff3b30; }
+        .btn-nuke { 
+            background: #ff3b30; color: #fff; border: none; padding: 15px; width: 100%; 
+            font-weight: bold; cursor: pointer; letter-spacing: 2px; border-radius: 8px; transition: 0.3s;
         }
+        .btn-nuke:hover { background: #ff0000; box-shadow: 0 0 30px #ff0000; }
 
         /* Enlace Volver */
-        .back-link-container { text-align: center; margin-top: 2rem; }
-        .back-link { color: #666; text-decoration: none; font-size: 0.8rem; transition: 0.3s; }
-        .back-link:hover { color: #fff; }
+        .back-link { display: inline-block; color: #666; text-decoration: none; font-size: 0.9rem; transition: 0.3s; border: 1px solid #333; padding: 8px 20px; border-radius: 30px; }
+        .back-link:hover { color: #fff; border-color: #fff; background: rgba(255,255,255,0.1); }
 
         /* Alertas */
         .flash { padding: 12px; margin-bottom: 20px; border-radius: 6px; font-size: 0.9rem; text-align: center; }
@@ -126,47 +129,96 @@
     <div class="grid-background"></div>
 
     <div class="admin-wrapper">
-        <div class="god-card">
-            <div class="god-header">
-                <h1>PANEL DIOS</h1>
-                <p>BIENVENIDO, CREADOR {{ user.alias | upper }}</p>
-            </div>
-
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        <div class="flash {{ category }}">{{ message }}</div>
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
-
-            <form method="POST">
-                <div class="form-group">
-                    <label class="form-label">Identificador del Usuario (Email)</label>
-                    <input type="email" name="target_email" class="god-input" placeholder="usuario@orbe.ai" required autocomplete="off">
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Nivel de Acceso a Otorgar</label>
-                    <select name="new_plan" class="god-select">
-                        <option value="free">Restaurar a FREE (Básico)</option>
-                        <option value="gold">Otorgar GOLD (Dorado)</option>
-                        <option value="elite">Otorgar ELITE (Cian)</option>
-                        <option value="omega">🔓 Otorgar OMEGA (Ilimitado)</option>
-                        <optgroup label="Staff Orbe">
-                            <option value="support">Nombrar Soporte</option>
-                            <option value="admin">Nombrar Administrador</option>
-                        </optgroup>
-                    </select>
-                </div>
-
-                <button type="submit" class="btn-god">EJECUTAR COMANDO</button>
-            </form>
-
-            <div class="back-link-container">
-                <a href="{{ url_for('dashboard') }}" class="back-link">← Regresar al Centro de Mando</a>
+        
+        <div class="god-header">
+            <h1>PANEL DIOS</h1>
+            <p>BIENVENIDO, CREADOR {{ user.alias | upper }}</p>
+            <div style="margin-top: 20px;">
+                <a href="{{ url_for('dashboard') }}" class="back-link">← Volver al Centro de Mando</a>
             </div>
         </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- 1. GESTIÓN DE RANGOS -->
+        <div class="god-card main-card">
+            <h3 class="section-title">ASIGNACIÓN DE PODER</h3>
+            <form method="POST">
+                <div class="form-row">
+                    <div class="form-group">
+                        <input type="email" name="target_email" class="god-input" placeholder="Correo del usuario..." required autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <select name="new_plan" class="god-select">
+                            <option value="free">Restaurar a FREE (Básico)</option>
+                            <option value="gold">Otorgar GOLD (Dorado)</option>
+                            <option value="elite">Otorgar ELITE (Cian)</option>
+                            <option value="omega">🔓 Otorgar OMEGA (Ilimitado)</option>
+                            <optgroup label="Staff Orbe">
+                                <option value="support">Nombrar Soporte</option>
+                                <option value="admin">Nombrar Administrador</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn-god">EJECUTAR COMANDO</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 2. LISTA DE USUARIOS (MONITOR DE RED) -->
+        <div class="god-card">
+            <h3 class="section-title">RED NEURONAL ({{ all_users|length }} NODOS ACTIVOS)</h3>
+            <div style="max-height: 400px; overflow-y: auto; padding-right: 10px;">
+                <table class="user-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>USUARIO</th>
+                            <th>EMAIL</th>
+                            <th>RANGO ACTUAL</th>
+                            <th>ESTADO</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in all_users %}
+                        <tr>
+                            <td>#{{ u.id }}</td>
+                            <td>{{ u.alias }}</td>
+                            <td>{{ u.email }}</td>
+                            <td><span class="badge b-{{ u.plan }}">{{ u.plan|upper }}</span></td>
+                            <td>
+                                <!-- Lógica Online: Si se movió en los últimos 5 min (300s) -->
+                                {% if u.last_active and (now - u.last_active).total_seconds() < 300 %}
+                                    <span class="status-dot online"></span> <span style="color:#00ff00">Online</span>
+                                {% else %}
+                                    <span class="status-dot offline"></span> Offline
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 3. ZONA DE PELIGRO -->
+        <div class="god-card danger-zone">
+            <h3 class="section-title danger-title">ZONA DE PELIGRO</h3>
+            <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 20px; line-height: 1.6;">
+                Esta acción eliminará <strong>TODOS</strong> los usuarios, chats, historial y registros de la base de datos permanentemente.
+                <br>Solo tú (el dueño) serás restaurado automáticamente tras el reinicio.
+            </p>
+            <form action="{{ url_for('reset_db_danger') }}" method="POST" onsubmit="return confirm('⚠ ALERTA CRÍTICA ⚠\n\n¿ESTÁS 100% SEGURO DE BORRAR TODA LA BASE DE DATOS?\nEsta acción no se puede deshacer.');">
+                <button type="submit" class="btn-nuke">☢ REINICIAR SISTEMA (WIPE TOTAL) ☢</button>
+            </form>
+        </div>
+
     </div>
 
 </body>
