@@ -1,0 +1,261 @@
+/* --- DASHBOARD LAYOUT --- */
+.dashboard-layout {
+    display: flex;
+    height: 100vh;
+    width: 100%;
+    position: relative;
+    z-index: 10;
+}
+
+/* --- SIDEBAR --- */
+.sidebar {
+    width: 260px;
+    background: rgba(10, 10, 12, 0.6);
+    backdrop-filter: blur(15px);
+    border-right: 1px solid var(--border-light);
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem;
+    flex-shrink: 0; /* Evita que se encoja */
+}
+
+.sidebar-header {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.logo-orb {
+    width: 20px; height: 20px;
+    background: radial-gradient(circle, #fff, #888);
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(255,255,255,0.5);
+}
+
+.brand { font-weight: 700; letter-spacing: 2px; font-size: 1.2rem; }
+
+/* BADGES DE NIVEL (TIERS) */
+.badge-tier { 
+    font-size: 0.6rem; padding: 2px 8px; border-radius: 4px; 
+    font-weight: bold; margin-left: auto; text-transform: uppercase;
+}
+.badge-free { background: #333; color: #aaa; border: 1px solid #555; }
+.badge-gold { background: linear-gradient(45deg, #ffd700, #ffaa00); color: #000; box-shadow: 0 0 10px rgba(255, 215, 0, 0.4); }
+.badge-elite { background: linear-gradient(45deg, #00ffff, #0088ff); color: #000; box-shadow: 0 0 10px rgba(0, 255, 255, 0.4); }
+.badge-omega { background: linear-gradient(45deg, #ff003c, #800000); color: #fff; box-shadow: 0 0 10px rgba(255, 0, 60, 0.5); }
+
+/* Menú de Navegación */
+.nav-menu { flex-grow: 1; display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+
+.nav-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 15px;
+    border-radius: 8px;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    transition: 0.3s;
+    border: 1px solid transparent;
+}
+
+.nav-item:hover, .nav-item.active {
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.nav-item.active .icon { color: var(--online-color); text-shadow: 0 0 5px var(--online-color); }
+
+/* --- SIDEBAR FOOTER --- */
+.sidebar-footer {
+    display: flex;
+    flex-direction: column; 
+    gap: 15px; 
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-light);
+    margin-top: auto; 
+}
+
+/* Enlace de Promo Premium */
+.premium-promo {
+    text-align: center; font-size: 0.8rem; text-decoration: none;
+    border: 1px solid; padding: 8px; border-radius: 4px;
+    font-weight: bold; transition: 0.3s;
+}
+.premium-promo:hover { opacity: 0.8; transform: translateY(-2px); }
+
+/* --- PERFILES POR NIVEL (TIERS) --- */
+.user-mini-profile {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    transition: 0.3s;
+    position: relative; overflow: hidden;
+}
+
+/* 1. FREE (Gris básico) */
+.profile-free { border-color: #444; background: rgba(255,255,255,0.02); }
+
+/* 2. GOLD (Dorado brillante) */
+.profile-gold { 
+    border-color: #ffd700; 
+    background: linear-gradient(90deg, rgba(255, 215, 0, 0.05), transparent);
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.1);
+}
+.profile-gold .name { color: #ffd700 !important; }
+
+/* 3. ELITE (Cian futurista) */
+.profile-elite {
+    border-color: #00ffff;
+    background: linear-gradient(90deg, rgba(0, 255, 255, 0.05), transparent);
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.1);
+}
+.profile-elite .name { color: #00ffff !important; text-shadow: 0 0 5px rgba(0,255,255,0.5); }
+
+/* 4. OMEGA (Poder Absoluto) */
+.profile-omega {
+    border-color: #ff003c;
+    background: linear-gradient(90deg, rgba(255, 0, 60, 0.1), #000);
+    box-shadow: 0 0 20px rgba(255, 0, 60, 0.3);
+}
+.profile-omega .name { color: #ff003c !important; letter-spacing: 1px; font-weight: 800; }
+.profile-omega .avatar { background: #ff003c; color: #fff; box-shadow: 0 0 10px #ff003c; }
+
+
+/* Elementos internos del perfil */
+.avatar {
+    width: 35px; height: 35px;
+    background: var(--text-secondary); color: #000;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.9rem; flex-shrink: 0;
+}
+
+.user-info { display: flex; flex-direction: column; flex-grow: 1; min-width: 0;}
+.user-info .name { font-size: 0.85rem; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.user-info .status { font-size: 0.65rem; color: var(--text-secondary); }
+
+.logout-btn {
+    color: var(--offline-color);
+    font-size: 1.2rem;
+    padding: 5px; cursor: pointer; opacity: 0.7;
+}
+.logout-btn:hover { opacity: 1; transform: scale(1.1); }
+
+
+/* --- MAIN WORKSPACE --- */
+.main-workspace {
+    flex-grow: 1;
+    display: flex; flex-direction: column;
+    overflow-y: auto; padding: 2rem;
+}
+
+.top-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 2rem; color: var(--text-secondary);
+    font-size: 0.8rem; letter-spacing: 1px; text-transform: uppercase;
+}
+.clock { font-family: monospace; font-size: 1rem; color: #fff; }
+
+/* Grid de Contenido */
+.content-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 20px;
+}
+
+/* Tarjetas */
+.card {
+    background: rgba(15, 15, 20, 0.5);
+    border: 1px solid var(--border-light);
+    border-radius: 12px; padding: 2rem;
+    backdrop-filter: blur(10px);
+}
+
+.welcome-card { grid-column: 1 / -1; }
+.welcome-card h1 { font-weight: 300; font-size: 2.5rem; margin-bottom: 1rem; }
+.welcome-card .highlight { color: #fff; text-decoration: underline; }
+.welcome-card p { color: var(--text-secondary); font-size: 1.1rem; height: 1.5rem; margin-bottom: 2rem;}
+
+.btn-action {
+    padding: 12px 25px;
+    background: var(--text-primary);
+    color: #000; border: none; font-weight: 700;
+    cursor: pointer; transition: 0.3s;
+    clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+    display: inline-block; text-decoration: none;
+}
+.btn-action:hover { background: var(--online-color); transform: translateY(-2px); color: #000; }
+
+/* BARRAS DE ESTADO (Real-time) */
+.status-bar-bg {
+    width: 100%; height: 6px; background: #222; border-radius: 3px; overflow: hidden; margin-top: 5px;
+}
+.status-bar-fill {
+    height: 100%; width: 0%; /* Inicia en 0 */
+    background: var(--online-color);
+    box-shadow: 0 0 10px var(--online-color);
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); /* Animación suave */
+}
+
+/* Changelog Dinámico */
+.card h3 { font-size: 0.9rem; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 10px; }
+
+.changelog { list-style: none; }
+.changelog li { 
+    font-size: 0.8rem; color: #aaa; margin-bottom: 12px; 
+    border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;
+    display: flex; justify-content: space-between;
+}
+.changelog .version { color: var(--text-primary); font-family: monospace; font-weight: bold; }
+.changelog .date { font-size: 0.7rem; color: #555; }
+
+/* Cursor parpadeante */
+.cursor { animation: blink 1s infinite; font-weight: bold; color: var(--online-color); }
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+/* --- NUEVOS ROLES DE JERARQUÍA --- */
+
+/* SOPORTE (Verde Táctico) */
+.profile-support {
+    border-color: #00ff00;
+    background: linear-gradient(90deg, rgba(0, 255, 0, 0.05), transparent);
+}
+.badge-support { background: #00ff00; color: #000; box-shadow: 0 0 5px #00ff00; }
+
+/* ADMIN (Púrpura Real) */
+.profile-admin {
+    border-color: #9d00ff;
+    background: linear-gradient(90deg, rgba(157, 0, 255, 0.1), transparent);
+    box-shadow: 0 0 15px rgba(157, 0, 255, 0.2);
+}
+.badge-admin { background: #9d00ff; color: #fff; box-shadow: 0 0 10px #9d00ff; }
+
+/* DUEÑO (Efecto RGB Animado / Legendario) */
+.profile-owner {
+    border: 2px solid transparent;
+    background: 
+        linear-gradient(#000, #000) padding-box,
+        linear-gradient(45deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8, #ff0000) border-box;
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+    animation: borderRotate 4s linear infinite;
+}
+
+.profile-owner .name {
+    background: linear-gradient(to right, #fff, #aaa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 900; letter-spacing: 1px;
+}
+
+.badge-owner {
+    background: #fff; color: #000; font-weight: 900;
+    box-shadow: 0 0 15px #fff; letter-spacing: 1px;
+}
+
+@keyframes borderRotate {
+    0% { filter: hue-rotate(0deg); }
+    100% { filter: hue-rotate(360deg); }
+}

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ORBE | Neural Link</title>
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/global.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div class="grid-background"></div>
+
+    <div class="dashboard-layout">
+        
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-orb"></div>
+                <span class="brand">ORBE</span>
+                <!-- Badge Dinámico según el plan actual -->
+                <span class="badge-tier badge-{{ user_plan }}">{{ tier.name }}</span>
+            </div>
+
+            <!-- NAVEGACIÓN -->
+            <nav class="nav-menu">
+                <a href="{{ url_for('dashboard') }}" class="nav-item">
+                    <span class="icon">⊞</span> Panel Principal
+                </a>
+                <a href="#" class="nav-item active">
+                    <span class="icon">◎</span> Chat Neural
+                </a>
+            </nav>
+
+            <!-- Botón NUEVO CHAT y LÍMITES -->
+            <div class="new-chat-container">
+                <a href="{{ url_for('new_chat') }}" class="btn-new-chat">
+                    <span>+ Nueva Conversación</span>
+                </a>
+                
+                <!-- Solo mostramos la barra de límite si NO es Omega -->
+                {% if user_plan != 'omega' %}
+                    {% set usage_percent = (chats|length / limit) * 100 %}
+                    
+                    <div class="limit-bar-container">
+                        <div class="limit-text">Chats: {{ chats|length }} / {{ limit }}</div>
+                        <div class="limit-bar">
+                            <div class="limit-fill" style="width: {{ usage_percent }}%"></div>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- HISTORIAL DE CHATS -->
+            <div class="history-list custom-scroll">
+                <p class="history-title">HISTORIAL</p>
+                {% for chat in chats %}
+                    <div class="history-wrapper {% if active_chat and active_chat.id == chat.id %}active{% endif %}">
+                        <a href="{{ url_for('chat', chat_id=chat.id) }}" class="history-item">
+                            <span class="icon">💬</span> 
+                            <span class="title">{{ chat.title }}</span>
+                        </a>
+                        
+                        <!-- BOTÓN DE BORRAR INTEGRADO CON MODAL -->
+                        <!-- Llama a la función JS openModal pasando la URL de borrado -->
+                        <button class="delete-chat-btn" onclick="openModal('{{ url_for('delete_chat', chat_id=chat.id) }}')" title="Purgar Conversación">
+                            ×
+                        </button>
+                    </div>
+                {% endfor %}
+                
+                {% if not chats %}
+                    <p class="no-chats">Sin historial reciente.</p>
+                {% endif %}
+            </div>
+
+            <!-- MENÚ INFERIOR -->
+            <div class="sidebar-footer">
+                {% if user_plan != 'omega' %}
+                    <!-- Enlace corregido a la página de precios -->
+                    <a href="{{ url_for('pricing') }}" class="premium-promo" style="color:{{ tier.color }}; border-color:{{ tier.color }}">
+                        ⚡ Mejorar Plan
+                    </a>
+                {% endif %}
+                
+                <!-- Perfil Estilizado según Tier -->
+                <div class="user-mini-profile profile-{{ user_plan }}">
+                    <div class="avatar">{{ user[0] | upper }}</div>
+                    <div class="user-info">
+                        <span class="name">{{ user }}</span>
+                        <a href="{{ url_for('logout') }}" class="logout-link">Cerrar Sesión</a>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ÁREA PRINCIPAL -->
+        <main class="chat-workspace">
+            
+            <!-- Header con borde de color según nivel -->
+            <div class="chat-header" style="border-top: 2px solid {{ tier.color }};">
+                <div class="model-status">
+                    <span class="status-dot online"></span>
+                    <span class="model-name">
+                        {% if active_chat %} {{ active_chat.title }} {% else %} Orbe Core v1.0 {% endif %}
+                    </span>
+                </div>
+                
+                <!-- Alertas del Sistema -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="flash-pill {{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+            </div>
+
+            <!-- Contenedor de Mensajes -->
+            <div class="messages-container" id="messages-box">
+                
+                {% if not active_chat %}
+                    <!-- Estado Vacío -->
+                    <div class="empty-state">
+                        <div class="orb-large" style="box-shadow: 0 0 30px {{ tier.color }}40;"></div>
+                        <h2>Orbe Neural System</h2>
+                        <p>Selecciona una conversación o inicia una nueva.</p>
+                    </div>
+                {% else %}
+                    <!-- Mensajes -->
+                    {% if messages %}
+                        {% for msg in messages %}
+                            <div class="message {{ msg.sender }}">
+                                {% if msg.sender == 'orbe' %}
+                                    <div class="msg-avatar"><div class="orb-mini"></div></div>
+                                {% endif %}
+                                
+                                <div class="msg-content"><p>{{ msg.content }}</p></div>
+                                
+                                {% if msg.sender == 'user' %}
+                                    <div class="msg-avatar"><div class="user-mini">YO</div></div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <!-- Chat Nuevo -->
+                        <div class="message orbe">
+                            <div class="msg-avatar"><div class="orb-mini"></div></div>
+                            <div class="msg-content"><p>Conversación inicializada. Esperando instrucciones.</p></div>
+                        </div>
+                    {% endif %}
+                {% endif %}
+
+            </div>
+
+            <!-- INPUT DE TEXTO -->
+            <div class="input-area">
+                {% if active_chat %}
+                    <form id="chat-form" class="input-wrapper">
+                        <input type="text" id="user-input" name="message" placeholder="Escribe tu instrucción..." autocomplete="off">
+                        <button type="submit" class="send-btn">
+                            <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                        </button>
+                    </form>
+                {% else %}
+                    <div class="input-locked">
+                        <p>Inicia un chat para interactuar con el núcleo.</p>
+                    </div>
+                {% endif %}
+            </div>
+
+        </main>
+    </div>
+
+    <!-- MODAL DE CONFIRMACIÓN DE BORRADO (Orbe Style) -->
+    <div id="deleteModal" class="orbe-modal">
+        <div class="modal-content">
+            <h3 class="modal-title">⚠ PURGAR DATOS</h3>
+            <p>¿Estás seguro de eliminar esta conversación de la memoria neural?</p>
+            <p class="warning-text">Esta acción es irreversible.</p>
+            
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+                <a href="#" id="confirmDeleteBtn" class="btn-confirm">CONFIRMAR BORRADO</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+</body>
+</html>

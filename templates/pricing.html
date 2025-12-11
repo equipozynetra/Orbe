@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>ORBE | Upgrade System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/global.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pricing.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet">
+    
+    <!-- SDK de PayPal (Modo Sandbox/Prueba con soporte de Tarjetas) -->
+    <!-- client-id=test es para pruebas. Cambia 'test' por tu ID real cuando lances -->
+    <script src="https://www.paypal.com/sdk/js?client-id=Ac7dhjTDOnnGUTGxbwwQBcamxF8NkWOfoNh8DwZlrVr86GTW8E2ECygP4gnVNJASR-Y6T2oDpFLFFqME&currency=EUR&components=buttons,funding-eligibility"></script>
+</head>
+<body>
+    <div class="grid-background"></div>
+
+    <div class="pricing-container">
+        <a href="{{ url_for('dashboard') }}" class="back-btn">← Volver al Núcleo</a>
+        
+        <header class="pricing-header">
+            <h1>Potencia Neural</h1>
+            <p>Selecciona tu nivel de acceso. Pagos seguros vía PayPal o Tarjeta.</p>
+        </header>
+
+        <div class="cards-wrapper">
+            
+            <!-- PLAN GOLD (€9) -->
+            <div class="plan-card gold">
+                <div class="plan-header">
+                    <h2>GOLD</h2>
+                    <div class="price">9€<span>/mes</span></div>
+                </div>
+                <ul class="features">
+                    <li>✓ <strong>10</strong> Chats simultáneos</li>
+                    <li>✓ Prioridad de procesamiento</li>
+                    <li>✓ Insignia Dorada</li>
+                </ul>
+                <div class="action-area">
+                    {% if current_plan == 'gold' %}
+                        <button class="btn-plan current" disabled>PLAN ACTUAL</button>
+                    {% elif current_plan in ['elite', 'omega', 'owner'] %}
+                        <button class="btn-plan current" disabled>INCLUIDO</button>
+                    {% else %}
+                        <!-- Contenedor para botón PayPal -->
+                        <div id="paypal-button-gold"></div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- PLAN ELITE (€29) -->
+            <div class="plan-card elite">
+                <div class="popular-tag">RECOMENDADO</div>
+                <div class="plan-header">
+                    <h2>ELITE</h2>
+                    <div class="price">29€<span>/mes</span></div>
+                </div>
+                <ul class="features">
+                    <li>✓ <strong>50</strong> Chats simultáneos</li>
+                    <li>✓ Velocidad x2</li>
+                    <li>✓ Insignia Cian Neón</li>
+                </ul>
+                <div class="action-area">
+                    {% if current_plan == 'elite' %}
+                        <button class="btn-plan current" disabled>PLAN ACTUAL</button>
+                    {% elif current_plan in ['omega', 'owner'] %}
+                        <button class="btn-plan current" disabled>INCLUIDO</button>
+                    {% else %}
+                        <div id="paypal-button-elite"></div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- PLAN OMEGA (€99) -->
+            <div class="plan-card omega">
+                <div class="plan-header">
+                    <h2>OMEGA</h2>
+                    <div class="price">99€<span>/mes</span></div>
+                </div>
+                <ul class="features">
+                    <li>✓ <strong>CHATS ILIMITADOS</strong></li>
+                    <li>✓ Velocidad Máxima</li>
+                    <li>✓ Insignia Carmesí</li>
+                </ul>
+                <div class="action-area">
+                    {% if current_plan == 'omega' or current_plan == 'owner' %}
+                        <button class="btn-plan current" disabled>PLAN ACTUAL</button>
+                    {% else %}
+                        <div id="paypal-button-omega"></div>
+                    {% endif %}
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- LÓGICA DE PAGOS -->
+    <script>
+        // Función para renderizar botones de pago
+        function renderPayPalButton(containerId, planName, price) {
+            // Verifica si el contenedor existe en el DOM
+            if (!document.getElementById(containerId)) return;
+
+            paypal.Buttons({
+                style: {
+                    shape: 'rect',
+                    color: 'blue', // Azul oficial de PayPal
+                    layout: 'vertical',
+                    label: 'pay',
+                },
+                createOrder: function(data, actions) {
+                    return actions.order.create({
+                        purchase_units: [{
+                            description: 'Suscripción Orbe Plan ' + planName.toUpperCase(),
+                            amount: { 
+                                currency_code: "EUR",
+                                value: price 
+                            }
+                        }]
+                    });
+                },
+                onApprove: function(data, actions) {
+                    // Captura el pago
+                    return actions.order.capture().then(function(details) {
+                        console.log('Pago completado por ' + details.payer.name.given_name);
+                        
+                        // Enviar confirmación al servidor Flask
+                        fetch('/api/process_payment', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                plan: planName,
+                                orderID: data.orderID
+                            })
+                        }).then(response => response.json())
+                          .then(data => {
+                              if (data.success) {
+                                  alert('¡Pago Exitoso! Bienvenido al nivel ' + planName.toUpperCase());
+                                  window.location.href = "{{ url_for('dashboard') }}";
+                              } else {
+                                  alert('Error al procesar la mejora en el servidor.');
+                              }
+                          });
+                    });
+                },
+                onError: function (err) {
+                    console.error('Error en PayPal:', err);
+                    alert('Hubo un error con el pago. Intenta de nuevo.');
+                }
+            }).render('#' + containerId);
+        }
+
+        // Renderizamos los botones (Precios en Euros)
+        renderPayPalButton('paypal-button-gold', 'gold', '9.00');
+        renderPayPalButton('paypal-button-elite', 'elite', '29.00');
+        renderPayPalButton('paypal-button-omega', 'omega', '99.00');
+    </script>
+</body>
+</html>

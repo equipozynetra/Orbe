@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ORBE | Access Gateway</title>
+    
+    <!-- 1. Cargamos el CSS Global -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/global.css') }}">
+    <!-- 2. Cargamos el CSS específico de Landing -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div class="grid-background"></div>
+
+    <div class="layout">
+        <header class="top-bar">
+            <div class="brand">
+                <span class="brand-text">ORBE</span>
+                <span class="version">v4.0</span>
+            </div>
+            <div class="system-status">
+                <span class="status-dot online"></span>
+                <span class="status-text">SYSTEM: ONLINE</span>
+            </div>
+        </header>
+
+        <main class="core-container">
+            <div class="orb-visual">
+                <div class="ring outer-ring"></div>
+                <div class="ring inner-ring"></div>
+                <div class="core"></div>
+            </div>
+
+            <div class="text-content">
+                <h1 class="headline">Inteligencia sin límites.</h1>
+                <div class="info-block">
+                    <p class="description">
+                        Orbe es una arquitectura neuronal avanzada diseñada para superar las barreras del lenguaje natural convencional. 
+                        Precisión cuántica. Respuestas adaptativas.
+                    </p>
+                    <ul class="features">
+                        <li>Protocolo Seguro</li>
+                        <li>Latencia Nula</li>
+                        <li>Aprendizaje Continuo</li>
+                    </ul>
+                </div>
+                
+                <div class="access-control">
+                    <a href="{{ url_for('auth') }}" class="btn-primary">
+                        <span>Iniciar Protocolo de Acceso</span>
+                    </a>
+                    <p class="dev-note">Identificación requerida para interactuar con el núcleo.</p>
+                </div>
+            </div>
+        </main>
+
+        <footer class="footer-bar">
+            <div class="col-left">© 2023 ORBE PROJECT</div>
+            <div class="col-right">SECURE GATEWAY // ENCRYPTED</div>
+        </footer>
+    </div>
+
+</body>
+</html>

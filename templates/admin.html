@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ORBE | GOD MODE</title>
+    
+    <!-- Vinculamos estilos globales para fuentes y fondo -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/global.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- ESTILOS EXCLUSIVOS DEL PANEL DIOS --- */
+        body {
+            overflow: hidden; /* Sin scroll para efecto app */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* CORRECCIÓN DEL CLICK (z-index alto) */
+        .admin-wrapper {
+            position: relative;
+            z-index: 100; /* ESTO ARREGLA EL PROBLEMA DE NO PODER ESCRIBIR */
+            width: 100%;
+            max-width: 600px;
+            padding: 20px;
+        }
+
+        /* Tarjeta Principal */
+        .god-card {
+            background: rgba(10, 10, 12, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 3rem;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+            position: relative;
+            overflow: hidden;
+            animation: fadeIn 0.8s ease;
+        }
+
+        /* Efecto de borde arcoíris sutil para el dueño */
+        .god-card::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0; height: 4px;
+            background: linear-gradient(90deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8, #ff0000);
+            animation: rainbow 5s linear infinite;
+            background-size: 200%;
+        }
+
+        @keyframes rainbow { 0% { background-position: 0% 50%; } 100% { background-position: 100% 50%; } }
+
+        /* Header */
+        .god-header { text-align: center; margin-bottom: 2.5rem; }
+        .god-header h1 { font-size: 2rem; letter-spacing: 4px; color: #fff; text-transform: uppercase; margin-bottom: 5px; }
+        .god-header p { color: #666; font-size: 0.8rem; letter-spacing: 2px; }
+
+        /* Formularios */
+        .form-group { margin-bottom: 1.5rem; }
+        .form-label { display: block; color: var(--text-secondary); font-size: 0.75rem; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+        
+        .god-input, .god-select {
+            width: 100%;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-family: 'Space Grotesk', sans-serif;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: 0.3s;
+            outline: none;
+        }
+
+        .god-input:focus, .god-select:focus {
+            border-color: #fff;
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+        }
+
+        /* Opciones del Select con colores */
+        option { background: #111; color: #fff; }
+        option[value="gold"] { color: #ffd700; }
+        option[value="elite"] { color: #00ffff; }
+        option[value="omega"] { color: #ff003c; font-weight: bold; }
+
+        /* Botón Ejecutar */
+        .btn-god {
+            width: 100%;
+            padding: 15px;
+            background: #fff;
+            color: #000;
+            font-weight: 800;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-top: 10px;
+            text-transform: uppercase;
+        }
+
+        .btn-god:hover {
+            background: #ccc;
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.4);
+            transform: scale(1.02);
+        }
+
+        /* Enlace Volver */
+        .back-link-container { text-align: center; margin-top: 2rem; }
+        .back-link { color: #666; text-decoration: none; font-size: 0.8rem; transition: 0.3s; }
+        .back-link:hover { color: #fff; }
+
+        /* Alertas */
+        .flash { padding: 12px; margin-bottom: 20px; border-radius: 6px; font-size: 0.9rem; text-align: center; }
+        .flash.success { background: rgba(0, 255, 157, 0.1); border: 1px solid #00ff9d; color: #00ff9d; }
+        .flash.error { background: rgba(255, 59, 48, 0.1); border: 1px solid #ff3b30; color: #ff3b30; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <div class="grid-background"></div>
+
+    <div class="admin-wrapper">
+        <div class="god-card">
+            <div class="god-header">
+                <h1>PANEL DIOS</h1>
+                <p>BIENVENIDO, CREADOR {{ user.alias | upper }}</p>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="flash {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST">
+                <div class="form-group">
+                    <label class="form-label">Identificador del Usuario (Email)</label>
+                    <input type="email" name="target_email" class="god-input" placeholder="usuario@orbe.ai" required autocomplete="off">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Nivel de Acceso a Otorgar</label>
+                    <select name="new_plan" class="god-select">
+                        <option value="free">Restaurar a FREE (Básico)</option>
+                        <option value="gold">Otorgar GOLD (Dorado)</option>
+                        <option value="elite">Otorgar ELITE (Cian)</option>
+                        <option value="omega">🔓 Otorgar OMEGA (Ilimitado)</option>
+                        <optgroup label="Staff Orbe">
+                            <option value="support">Nombrar Soporte</option>
+                            <option value="admin">Nombrar Administrador</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn-god">EJECUTAR COMANDO</button>
+            </form>
+
+            <div class="back-link-container">
+                <a href="{{ url_for('dashboard') }}" class="back-link">← Regresar al Centro de Mando</a>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

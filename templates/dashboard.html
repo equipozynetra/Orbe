@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ORBE | Command Center</title>
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/global.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div class="grid-background"></div>
+
+    <div class="dashboard-layout">
+        
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-orb"></div>
+                <span class="brand">ORBE</span>
+                <!-- Badge Dinámico según plan -->
+                <span class="badge-tier badge-{{ user.plan }}">{{ tier.name }}</span>
+            </div>
+
+            <nav class="nav-menu">
+                <a href="#" class="nav-item active">
+                    <span class="icon">⊞</span> Panel Principal
+                </a>
+                <a href="{{ url_for('chat') }}" class="nav-item">
+                    <span class="icon">◎</span> Chat Neural
+                </a>
+                <a href="#" class="nav-item">
+                    <span class="icon">⚙</span> Configuración
+                </a>
+
+                <!-- BOTÓN EXCLUSIVO PARA EL DUEÑO (ADMIN) -->
+                {% if user.plan == 'owner' %}
+                    <a href="{{ url_for('admin_panel') }}" class="nav-item" style="border: 1px solid #fff; margin-top: 20px; color: #fff; background: rgba(255,255,255,0.1);">
+                        <span class="icon">♛</span> PANEL DIOS
+                    </a>
+                {% endif %}
+            </nav>
+
+            <!-- MENÚ INFERIOR / SIDEBAR FOOTER -->
+            <div class="sidebar-footer">
+                <!-- Mostrar botón de compra solo si NO es Omega y NO es el Dueño -->
+                {% if user.plan not in ['omega', 'owner'] %}
+                    <a href="{{ url_for('pricing') }}" class="premium-promo" style="color:{{ tier.color }}; border-color:{{ tier.color }}">
+                        ⚡ Mejorar Plan
+                    </a>
+                {% endif %}
+
+                <!-- Perfil Estilizado según Tier -->
+                <div class="user-mini-profile profile-{{ user.plan }}">
+                    <div class="avatar">{{ user.alias[0] | upper }}</div>
+                    <div class="user-info">
+                        <span class="name">{{ user.alias }}</span>
+                        <span class="status">ID: {{ user.plan | upper }}-00{{ user.id }}</span>
+                    </div>
+                    <a href="{{ url_for('logout') }}" class="logout-btn" title="Desconectar">⏻</a>
+                </div>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="main-workspace">
+            
+            <header class="top-header">
+                <div class="breadcrumbs">SISTEMA // DASHBOARD // {{ user.plan | upper }}</div>
+                <div class="clock" id="digital-clock">00:00:00</div>
+            </header>
+
+            <div class="content-grid">
+                
+                <!-- Tarjeta Bienvenida -->
+                <div class="card welcome-card" style="border-left: 4px solid {{ tier.color }};">
+                    <h1>Bienvenido, <span class="highlight" style="text-decoration-color: {{ tier.color }}">{{ user.alias }}</span>.</h1>
+                    <p id="typing-text"></p>
+                    <div style="margin-top: 20px;">
+                        <a href="{{ url_for('chat') }}" class="btn-action">Iniciar Interfaz Neural</a>
+                        
+                        <!-- BOTÓN PREMIUM (Oculto para Omega/Owner) -->
+                        {% if user.plan not in ['omega', 'owner'] %}
+                            <a href="{{ url_for('pricing') }}" class="btn-action" style="background: transparent; border: 1px solid {{ tier.color }}; color: {{ tier.color }}; margin-left: 10px;">
+                                Obtener Más Poder
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Tarjeta Estado (Tiempo Real) -->
+                <div class="card status-card">
+                    <h3>Estado del Núcleo</h3>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:#888;">
+                            <span>CPU NEURAL</span>
+                            <span id="cpu-text">0%</span>
+                        </div>
+                        <div class="status-bar-bg">
+                            <div class="status-bar-fill" id="cpu-fill"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:#888;">
+                            <span>MEMORIA CUÁNTICA</span>
+                            <span id="ram-text">0%</span>
+                        </div>
+                        <div class="status-bar-bg">
+                            <div class="status-bar-fill" id="ram-fill"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Registro de Cambios -->
+                <div class="card updates-card">
+                    <h3>Registro de Cambios</h3>
+                    <ul class="changelog">
+                        {% for log in logs %}
+                            <li>
+                                <div>
+                                    <span class="version" style="color: {{ tier.color }}">{{ log.version }}</span>
+                                    {{ log.description }}
+                                </div>
+                                <span class="date">{{ log.date.strftime('%d/%m') }}</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

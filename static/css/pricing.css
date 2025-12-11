@@ -1,0 +1,102 @@
+/* --- CONFIGURACIÓN DE SCROLL PARA PRECIOS --- */
+/* Sobrescribimos el global.css para permitir bajar en esta página */
+body {
+    overflow-y: auto !important; 
+    height: auto !important;
+}
+
+/* --- LAYOUT DE PRECIOS --- */
+.pricing-container {
+    position: relative; z-index: 10;
+    max-width: 1200px; margin: 0 auto; padding: 4rem 2rem;
+    min-height: 100vh; /* Permite que crezca */
+    display: flex; flex-direction: column;
+}
+
+.back-btn {
+    position: absolute; top: 2rem; left: 2rem;
+    color: var(--text-secondary); font-size: 0.9rem; transition: 0.3s; text-decoration: none;
+}
+.back-btn:hover { color: #fff; transform: translateX(-5px); }
+
+.pricing-header { text-align: center; margin-bottom: 4rem; margin-top: 2rem; }
+.pricing-header h1 { font-size: 3rem; margin-bottom: 10px; letter-spacing: -1px; color: #fff; }
+.pricing-header p { color: var(--text-secondary); font-size: 1.1rem; }
+
+/* --- GRID DE TARJETAS --- */
+.cards-wrapper {
+    display: flex; justify-content: center; gap: 30px; align-items: flex-start;
+    flex-wrap: wrap; /* Importante: Si la pantalla es chica, bajan */
+    padding-bottom: 50px; /* Espacio abajo para que no se corte */
+}
+
+.plan-card {
+    background: rgba(15, 15, 20, 0.8);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border-light);
+    border-radius: 16px;
+    padding: 2.5rem;
+    width: 320px;
+    text-align: center;
+    transition: 0.3s;
+    position: relative;
+    display: flex; flex-direction: column;
+}
+
+.plan-card:hover { transform: translateY(-10px); }
+
+.plan-header h2 { font-size: 1.5rem; letter-spacing: 2px; margin-bottom: 10px; font-weight: 700; }
+.price { font-size: 2.5rem; font-weight: 700; color: #fff; margin-bottom: 2rem; }
+.price span { font-size: 1rem; color: #666; font-weight: 400; }
+
+.features { list-style: none; text-align: left; margin-bottom: 2.5rem; flex-grow: 1; }
+.features li { margin-bottom: 12px; color: #ccc; font-size: 0.9rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px; }
+.features li strong { color: #fff; }
+
+.btn-plan {
+    display: block; width: 100%; padding: 15px;
+    border-radius: 8px; font-weight: bold; text-decoration: none;
+    transition: 0.3s; color: #000; letter-spacing: 1px;
+}
+.btn-plan.current { background: #333; color: #666; cursor: default; }
+
+/* --- ESTILOS ESPECÍFICOS --- */
+
+/* GOLD */
+.gold { border-top: 4px solid #ffd700; }
+.gold:hover { box-shadow: 0 0 30px rgba(255, 215, 0, 0.1); border-color: #ffd700; }
+.gold h2 { color: #ffd700; }
+.gold .btn-plan:not(.current) { background: #ffd700; }
+.gold .btn-plan:not(.current):hover { box-shadow: 0 0 15px #ffd700; color: #000; }
+
+/* ELITE */
+.elite { border-top: 4px solid #00ffff; transform: scale(1.05); z-index: 5; background: rgba(15, 15, 20, 0.95); }
+.elite:hover { transform: scale(1.1); box-shadow: 0 0 40px rgba(0, 255, 255, 0.15); border-color: #00ffff; }
+.elite h2 { color: #00ffff; }
+.elite .btn-plan:not(.current) { background: #00ffff; }
+.elite .btn-plan:not(.current):hover { box-shadow: 0 0 20px #00ffff; color: #000; }
+
+.popular-tag {
+    position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+    background: #00ffff; color: #000; font-size: 0.7rem; font-weight: bold;
+    padding: 4px 12px; border-radius: 20px; box-shadow: 0 0 10px #00ffff;
+}
+
+/* OMEGA */
+.omega { border-top: 4px solid #ff003c; }
+.omega:hover { box-shadow: 0 0 30px rgba(255, 0, 60, 0.2); border-color: #ff003c; }
+.omega h2 { color: #ff003c; }
+.omega .btn-plan:not(.current) { background: #ff003c; color: #fff; }
+.omega .btn-plan:not(.current):hover { box-shadow: 0 0 20px #ff003c; color: #fff; }
+
+/* Ajuste para los botones de pago */
+.action-area {
+    margin-top: auto;
+    width: 100%;
+}
+
+/* Asegura que los botones de PayPal tengan espacio y se vean bien */
+.action-area > div {
+    min-height: 150px; /* Espacio suficiente para botón PayPal + Tarjeta */
+    z-index: 1; /* Asegura que sean clickeables */
+}

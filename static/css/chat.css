@@ -1,0 +1,315 @@
+/* --- LAYOUT GENERAL DEL CHAT --- */
+.chat-workspace {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    position: relative;
+    background: rgba(0,0,0,0.2);
+}
+
+/* Header Flotante (Barra superior del chat) */
+.chat-header {
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-light);
+    background: rgba(10, 10, 12, 0.4);
+    backdrop-filter: blur(5px);
+    position: relative; /* Necesario para posicionar alertas */
+    transition: border-color 0.5s ease; /* Transición suave al cambiar de chat */
+}
+
+.model-name { font-size: 0.9rem; font-weight: 600; letter-spacing: 1px; margin-left: 10px; }
+
+.icon-btn {
+    background: none; border: none; color: var(--text-secondary);
+    font-size: 1.2rem; cursor: pointer; margin-left: 15px; transition: 0.3s;
+}
+.icon-btn:hover { color: #fff; transform: scale(1.1); }
+
+/* --- SIDEBAR EXTRAS (Historial, Badges, Límites) --- */
+
+/* Badges de Nivel (Tiers) */
+.badge-tier { 
+    font-size: 0.6rem; padding: 2px 8px; border-radius: 4px; 
+    font-weight: bold; margin-left: 10px; text-transform: uppercase;
+}
+.badge-free { background: #333; color: #aaa; border: 1px solid #555; }
+.badge-gold { background: linear-gradient(45deg, #ffd700, #ffaa00); color: #000; box-shadow: 0 0 10px rgba(255, 215, 0, 0.4); }
+.badge-elite { background: linear-gradient(45deg, #00ffff, #0088ff); color: #000; box-shadow: 0 0 10px rgba(0, 255, 255, 0.4); }
+.badge-omega { background: linear-gradient(45deg, #ff003c, #800000); color: #fff; box-shadow: 0 0 10px rgba(255, 0, 60, 0.5); }
+
+/* Botón Nuevo Chat */
+.new-chat-container { padding-bottom: 1rem; border-bottom: 1px solid var(--border-light); margin-bottom: 1rem; }
+
+.btn-new-chat {
+    display: flex; align-items: center; justify-content: center;
+    width: 100%; padding: 10px;
+    background: rgba(255,255,255,0.05); border: 1px dashed var(--border-light);
+    color: var(--text-primary); border-radius: 8px;
+    transition: 0.3s; font-size: 0.9rem;
+}
+.btn-new-chat:hover { background: var(--text-primary); color: #000; border-style: solid; }
+
+/* Barra de Límite (Solo usuarios Free/Gold/Elite) */
+.limit-bar-container { margin-top: 10px; }
+.limit-text { font-size: 0.7rem; color: var(--text-secondary); display: flex; justify-content: space-between; margin-bottom: 4px; }
+.limit-bar { width: 100%; height: 4px; background: #222; border-radius: 2px; overflow: hidden; }
+.limit-fill { height: 100%; background: var(--offline-color); transition: width 0.5s ease; }
+
+/* --- LISTA DE HISTORIAL (Con soporte para botón borrar) --- */
+.history-list { 
+    flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; min-height: 0; 
+}
+.history-title { font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 10px; letter-spacing: 1px; font-weight: bold; }
+
+/* Wrapper para item + botón borrar */
+.history-wrapper {
+    display: flex; align-items: center; border-radius: 6px; overflow: hidden;
+    transition: 0.2s; padding-right: 5px; position: relative;
+}
+.history-wrapper:hover { background: rgba(255,255,255,0.05); }
+.history-wrapper.active { 
+    background: rgba(0, 255, 157, 0.1); 
+    border-left: 3px solid var(--online-color); 
+}
+
+.history-item {
+    flex-grow: 1; display: flex; align-items: center; gap: 10px;
+    padding: 10px; font-size: 0.9rem; color: #ccc;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    text-decoration: none;
+}
+.history-item:hover { color: #fff; }
+
+/* Botón de Borrar (X) */
+.delete-chat-btn {
+    opacity: 0; color: #666; font-weight: bold; padding: 5px 8px; cursor: pointer;
+    font-size: 1.1rem; transition: 0.2s; text-decoration: none;
+}
+.history-wrapper:hover .delete-chat-btn { opacity: 1; }
+.delete-chat-btn:hover { color: #ff3b30; transform: scale(1.2); }
+
+.no-chats { font-size: 0.8rem; color: #444; font-style: italic; margin-top: 10px; text-align: center; }
+
+/* Scrollbar Personalizado (Sidebar) */
+.custom-scroll::-webkit-scrollbar { width: 4px; }
+.custom-scroll::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
+.custom-scroll::-webkit-scrollbar-thumb { background: #444; border-radius: 2px; }
+.custom-scroll::-webkit-scrollbar-thumb:hover { background: #666; }
+
+/* Promo Premium (Sidebar footer) */
+.premium-promo {
+    display: block; text-align: center; margin-bottom: 15px;
+    font-size: 0.8rem; color: #ffd700; text-decoration: none;
+    border: 1px solid rgba(255, 215, 0, 0.3); padding: 8px; border-radius: 4px;
+    animation: pulseGold 3s infinite;
+}
+.premium-promo:hover { background: rgba(255, 215, 0, 0.1); }
+
+@keyframes pulseGold { 0%, 100% { box-shadow: 0 0 0 transparent; } 50% { box-shadow: 0 0 10px rgba(255, 215, 0, 0.2); } }
+
+/* --- PERFILES POR NIVEL (Para el Sidebar del Chat) --- */
+/* (Reutilizamos estilos del dashboard para consistencia) */
+.profile-free { border: 1px solid #444; background: rgba(255,255,255,0.02); }
+.profile-gold { border: 1px solid #ffd700; background: linear-gradient(90deg, rgba(255, 215, 0, 0.05), transparent); }
+.profile-elite { border: 1px solid #00ffff; background: linear-gradient(90deg, rgba(0, 255, 255, 0.05), transparent); }
+.profile-omega { border: 1px solid #ff003c; background: linear-gradient(90deg, rgba(255, 0, 60, 0.1), #000); }
+
+
+/* --- ESTADOS Y ALERTAS --- */
+
+/* Estado Vacío */
+.empty-state {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 100%; color: var(--text-secondary); text-align: center; opacity: 0.7;
+}
+.orb-large {
+    width: 80px; height: 80px; background: #333; border-radius: 50%; margin-bottom: 20px;
+    box-shadow: 0 0 30px rgba(0,0,0,0.5);
+    background: radial-gradient(circle, #444, #111);
+}
+.input-locked { text-align: center; color: #555; font-size: 0.9rem; padding: 1rem; user-select: none; }
+
+/* Alertas Flotantes (Flash Pills) */
+.flash-pill {
+    position: absolute; 
+    top: 80px; left: 50%; transform: translateX(-50%);
+    padding: 10px 25px; border-radius: 30px; 
+    font-size: 0.85rem; z-index: 100;
+    backdrop-filter: blur(10px);
+    animation: slideDownFade 0.5s ease;
+    white-space: nowrap;
+}
+.flash-pill.premium_error, .flash-pill.error { 
+    background: rgba(255, 59, 48, 0.9); color: #fff; 
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 5px 20px rgba(0,0,0,0.5); 
+}
+.flash-pill.success { 
+    background: rgba(0, 255, 157, 0.9); color: #000; font-weight: bold;
+    box-shadow: 0 0 15px rgba(0, 255, 157, 0.4);
+}
+
+@keyframes slideDownFade {
+    from { transform: translate(-50%, -20px); opacity: 0; }
+    to { transform: translate(-50%, 0); opacity: 1; }
+}
+
+/* --- CONTENEDOR DE MENSAJES --- */
+.messages-container {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 2rem;
+    padding-bottom: 150px; /* Espacio para el input abajo */
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    scroll-behavior: smooth;
+}
+
+/* Scrollbar de mensajes */
+.messages-container::-webkit-scrollbar { width: 6px; }
+.messages-container::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+.messages-container::-webkit-scrollbar-track { background: transparent; }
+
+/* --- BURBUJAS DE MENSAJE --- */
+.message {
+    display: flex; gap: 15px; max-width: 80%; animation: slideIn 0.3s ease;
+}
+
+/* Estilo Orbe (Izquierda) */
+.message.orbe { align-self: flex-start; }
+.message.orbe .msg-content {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-light);
+    border-radius: 0 15px 15px 15px;
+    color: #e0e0e0;
+}
+
+/* Estilo Usuario (Derecha) */
+.message.user { align-self: flex-end; flex-direction: row-reverse; }
+.message.user .msg-content {
+    background: var(--online-color); /* Verde Neon */
+    color: #000; /* Texto negro para contraste */
+    font-weight: 500;
+    border-radius: 15px 0 15px 15px;
+    box-shadow: 0 0 15px rgba(0, 255, 157, 0.2);
+}
+
+/* Avatares */
+.msg-avatar { width: 35px; height: 35px; flex-shrink: 0; }
+.orb-mini {
+    width: 100%; height: 100%;
+    background: radial-gradient(circle, #fff, #666);
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(255,255,255,0.3);
+    animation: pulse 3s infinite;
+}
+.user-mini {
+    width: 100%; height: 100%;
+    background: #333; color: #fff;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.8rem; font-weight: bold;
+}
+
+/* Contenido del Texto */
+.msg-content {
+    padding: 12px 18px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    word-wrap: break-word; /* Evitar desbordamiento de texto largo */
+}
+
+/* --- INPUT AREA (ABAJO) --- */
+.input-area {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    padding: 2rem;
+    background: linear-gradient(to top, #030304 80%, transparent);
+    display: flex; flex-direction: column; align-items: center;
+    z-index: 10;
+}
+
+.input-wrapper {
+    width: 100%; max-width: 800px; position: relative; display: flex; align-items: center;
+}
+
+.input-wrapper input {
+    width: 100%; padding: 18px 60px 18px 25px;
+    background: rgba(20, 20, 25, 0.8);
+    border: 1px solid var(--border-light);
+    border-radius: 30px;
+    color: #fff;
+    font-family: var(--font-main);
+    font-size: 1rem;
+    backdrop-filter: blur(10px);
+    transition: 0.3s;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+}
+
+.input-wrapper input:focus {
+    outline: none;
+    border-color: var(--online-color);
+    box-shadow: 0 0 20px rgba(0, 255, 157, 0.1);
+    background: rgba(30, 30, 35, 0.9);
+}
+
+.send-btn {
+    position: absolute; right: 10px;
+    background: transparent; border: none;
+    width: 40px; height: 40px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: 0.2s;
+}
+
+.send-btn svg { width: 20px; fill: var(--text-secondary); }
+.send-btn:hover { background: rgba(255,255,255,0.1); }
+.send-btn:hover svg { fill: var(--online-color); }
+
+.disclaimer { font-size: 0.7rem; color: #444; margin-top: 10px; }
+
+@keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* --- ORBE MODAL --- */
+.orbe-modal {
+    display: none; /* Oculto por defecto */
+    position: fixed; z-index: 1000;
+    left: 0; top: 0; width: 100%; height: 100%;
+    background-color: rgba(0, 0, 0, 0.8); /* Fondo oscuro */
+    backdrop-filter: blur(5px);
+    align-items: center; justify-content: center;
+    animation: fadeIn 0.3s;
+}
+
+.modal-content {
+    background: #0f0f12;
+    border: 1px solid #ff3b30; /* Borde rojo de alerta */
+    padding: 2rem; border-radius: 12px;
+    width: 400px; text-align: center;
+    box-shadow: 0 0 30px rgba(255, 59, 48, 0.2);
+    transform: scale(0.9); animation: popIn 0.3s forwards;
+}
+
+.modal-title { color: #ff3b30; font-size: 1.2rem; margin-bottom: 1rem; letter-spacing: 2px; }
+.warning-text { color: #666; font-size: 0.8rem; margin: 10px 0 20px 0; }
+
+.modal-actions { display: flex; gap: 10px; justify-content: center; }
+
+.btn-cancel {
+    padding: 10px 20px; background: transparent; border: 1px solid #444; color: #fff;
+    cursor: pointer; border-radius: 4px; transition: 0.2s;
+}
+.btn-cancel:hover { background: #333; }
+
+.btn-confirm {
+    padding: 10px 20px; background: #ff3b30; border: none; color: #fff;
+    cursor: pointer; border-radius: 4px; font-weight: bold; text-decoration: none;
+    transition: 0.2s;
+}
+.btn-confirm:hover { box-shadow: 0 0 15px #ff3b30; }
+
+@keyframes popIn { to { transform: scale(1); } }

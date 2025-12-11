@@ -1,0 +1,194 @@
+/* --- AUTH.CSS: Estilos específicos del Login/Registro --- */
+
+.auth-wrapper {
+    width: 100%; height: 100vh;
+    display: flex; justify-content: center; align-items: center;
+    position: relative; z-index: 10;
+}
+
+.back-link {
+    position: absolute; top: 2rem; left: 2rem;
+    font-size: 0.8rem; color: var(--text-secondary);
+}
+.back-link:hover { color: #fff; transform: translateX(-5px); }
+
+.auth-card {
+    background: rgba(10, 10, 12, 0.85); /* Un poco más oscuro para legibilidad */
+    border: 1px solid var(--border-light);
+    padding: 2.5rem; /* Reducimos un poco el padding */
+    width: 450px; /* Un poco más ancha para el puzzle */
+    max-width: 90%;
+    
+    /* --- CORRECCIÓN DE ALTURA --- */
+    max-height: 85vh; /* Ocupa máximo el 85% de la altura de la pantalla */
+    overflow-y: auto; /* Habilita scroll si el contenido es muy largo */
+    display: flex;
+    flex-direction: column;
+    
+    backdrop-filter: blur(20px);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    animation: fadeIn 1s ease;
+    border-radius: 8px; /* Borde redondeado sutil */
+}
+
+/* Personalizamos la barra de scroll de la tarjeta para que sea estilo Orbe */
+.auth-card::-webkit-scrollbar {
+    width: 6px;
+}
+.auth-card::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+}
+.auth-card::-webkit-scrollbar-thumb {
+    background: var(--text-secondary);
+    border-radius: 3px;
+}
+.auth-card::-webkit-scrollbar-thumb:hover {
+    background: var(--online-color);
+}
+
+.auth-header h2 { font-weight: 300; font-size: 2rem; margin-bottom: 0.5rem; }
+.auth-header p { color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 2rem; }
+
+/* Formularios */
+.input-group { margin-bottom: 1.5rem; text-align: left; }
+.input-group label { 
+    display: block; font-size: 0.7rem; text-transform: uppercase; 
+    letter-spacing: 1px; color: var(--text-secondary); margin-bottom: 8px; 
+}
+.input-group input {
+    width: 100%; padding: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-light);
+    color: #fff; font-family: var(--font-main);
+    transition: 0.3s;
+}
+.input-group input:focus { 
+    outline: none; border-color: var(--online-color); 
+    background: rgba(255, 255, 255, 0.05); 
+}
+
+.btn-login {
+    width: 100%; padding: 14px;
+    background: var(--text-primary);
+    color: #000; border: none;
+    font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+    cursor: pointer; transition: 0.3s; margin-top: 1rem;
+}
+.btn-login:hover { 
+    background: var(--online-color); 
+    box-shadow: 0 0 15px rgba(0, 255, 157, 0.4); 
+}
+
+.auth-footer { 
+    margin-top: 2rem; 
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-light); /* Una linea sutil separadora */
+    font-size: 0.8rem; 
+    color: var(--text-secondary); 
+    text-align: center; 
+}
+
+/* --- ALERTAS DEL SISTEMA --- */
+.message-container {
+    margin-bottom: 1.5rem;
+}
+
+.alert {
+    padding: 10px 15px;
+    font-size: 0.8rem;
+    border-radius: 4px;
+    border-left: 3px solid;
+    animation: fadeIn 0.5s ease;
+}
+
+.alert.error {
+    background: rgba(255, 59, 48, 0.1);
+    border-color: var(--offline-color);
+    color: #ff8a80;
+}
+
+.alert.success {
+    background: rgba(0, 255, 157, 0.1);
+    border-color: var(--online-color);
+    color: var(--online-color);
+}
+
+/* --- EXTENSIONES VISUALES --- */
+
+/* 1. Icono de Ojo */
+.input-wrapper { position: relative; }
+.password-toggle {
+    position: absolute; right: 15px; top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer; opacity: 0.5; width: 20px; height: 20px;
+}
+.password-toggle:hover { opacity: 1; }
+.password-toggle svg { fill: var(--text-secondary); transition: 0.3s; }
+.password-toggle.visible svg { fill: var(--online-color); }
+
+/* 2. Barra de Fuerza */
+.strength-meter {
+    height: 4px; width: 100%;
+    background: rgba(255,255,255,0.1);
+    margin-top: 8px; border-radius: 2px;
+    overflow: hidden;
+}
+.strength-fill {
+    height: 100%; width: 0%;
+    background: var(--offline-color);
+    transition: width 0.3s ease, background-color 0.3s ease;
+}
+.strength-text {
+    font-size: 0.6rem; color: var(--text-secondary);
+    margin-top: 5px; display: block; text-align: right;
+}
+
+/* 3. Puzzle Orbe (Slider) */
+.puzzle-container { margin: 2rem 0; user-select: none; }
+.puzzle-label { font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 8px; display: block; }
+
+.slider-track {
+    width: 100%; height: 40px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-light);
+    border-radius: 30px; position: relative;
+    overflow: hidden;
+}
+
+.slider-overlay {
+    position: absolute; top: 0; left: 0; height: 100%; width: 0;
+    background: rgba(0, 255, 157, 0.1);
+    box-shadow: 0 0 15px rgba(0, 255, 157, 0.2);
+    transition: width 0.1s linear;
+}
+
+.slider-handle {
+    width: 40px; height: 38px;
+    background: #fff;
+    border-radius: 50%;
+    position: absolute; top: 0; left: 0;
+    cursor: grab;
+    display: flex; justify-content: center; align-items: center;
+    box-shadow: 0 0 10px rgba(255,255,255,0.5);
+    z-index: 5;
+}
+
+.slider-handle::after {
+    content: ''; width: 10px; height: 10px;
+    background: #000; border-radius: 50%;
+}
+
+.slider-text {
+    position: absolute; width: 100%; text-align: center;
+    top: 50%; transform: translateY(-50%);
+    font-size: 0.7rem; letter-spacing: 2px;
+    color: var(--text-secondary); pointer-events: none;
+}
+
+.unlocked .slider-handle { background: var(--online-color); }
+.unlocked .slider-text { opacity: 0; }
+
+/* Botón deshabilitado al inicio */
+.btn-login.disabled {
+    opacity: 0.5; cursor: not-allowed; background: #333;
+}
