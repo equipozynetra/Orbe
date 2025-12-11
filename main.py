@@ -49,10 +49,7 @@ class User(db.Model):
     password_hash = db.Column(db.String(200), nullable=False)
     is_verified = db.Column(db.Boolean, default=False)
     plan = db.Column(db.String(20), default='free') 
-    
-    # Campo para ver si está Online
     last_active = db.Column(db.DateTime, default=datetime.utcnow)
-    
     chats = db.relationship('Chat', backref='author', lazy=True)
 
 class Chat(db.Model):
@@ -75,14 +72,21 @@ class Changelog(db.Model):
     description = db.Column(db.String(200), nullable=False)
     date = db.Column(db.DateTime, default=datetime.utcnow)
 
-# --- MIDDLEWARE: TRACKING ACTIVIDAD ---
+# --- MIDDLEWARE: TRACKING ACTIVIDAD (BLINDADO) ---
 @app.before_request
 def update_last_active():
     if 'user_id' in session:
-        user = User.query.get(session['user_id'])
-        if user:
-            user.last_active = datetime.utcnow()
-            db.session.commit()
+        try:
+            user = User.query.get(session['user_id'])
+            if user:
+                user.last_active = datetime.utcnow()
+                db.session.commit()
+            else:
+                # Si la sesión existe pero el usuario no (por reset de DB), limpiamos la sesión
+                session.pop('user_id', None)
+        except:
+            # Si la DB no está lista, ignoramos el error para no romper la app
+            pass
 
 # --- FUNCIÓN EMAIL ---
 def send_email(to, subject, template_name, **kwargs):
@@ -102,8 +106,7 @@ def send_email(to, subject, template_name, **kwargs):
         print(f"--- ERROR CRÍTICO AL ENVIAR: {e} ---")
         return False
 
-# --- RUTAS PRINCIPALES ---
-
+# --- RUTAS ---
 @app.route('/')
 def home(): return render_template('index.html')
 
@@ -119,7 +122,6 @@ def auth():
                 flash('Acceso Denegado: Cuenta no verificada.', 'error'); return render_template('auth.html')
             session['user_id'] = user.id; session['user_name'] = user.alias
             
-            # Alerta login (excepto dueño)
             if user.plan != 'owner':
                 send_email(user.email, 'ORBE - Nueva Conexión', 'login_alert', user=user.alias)
             
@@ -163,8 +165,6 @@ def confirm_email(token):
 
 @app.route('/logout')
 def logout(): session.pop('user_id', None); return redirect(url_for('home'))
-
-# --- RUTAS APLICACIÓN ---
 
 @app.route('/dashboard')
 def dashboard():
@@ -220,19 +220,15 @@ def process_payment():
     if plan_name in ['gold', 'elite', 'omega']:
         user = User.query.get(session['user_id'])
         user.plan = plan_name; db.session.commit()
-        
-        # Enviar recibo con datos reales
         price = TIERS[plan_name]['price']
         date_str = datetime.now().strftime("%d/%m/%Y %H:%M")
         send_email(user.email, f'Recibo Orbe: Plan {plan_name.upper()}', 'receipt', user=user.alias, plan=plan_name, price=price, date=date_str, order_id=order_id)
-        
         return jsonify({'success': True})
     return jsonify({'error': 'Invalid'}), 400
 
 @app.route('/api/status')
 def api_status(): return {'cpu': random.randint(10, 95), 'ram': random.randint(20, 85)}
 
-# --- PANEL DE ADMINISTRACIÓN (SOLO DUEÑO) ---
 @app.route('/admin_panel', methods=['GET', 'POST'])
 def admin_panel():
     if 'user_id' not in session: return redirect(url_for('auth'))
@@ -245,11 +241,9 @@ def admin_panel():
         if target_user: target_user.plan = new_plan; db.session.commit(); flash(f'Usuario actualizado a {new_plan.upper()}', 'success')
         else: flash('Usuario no encontrado.', 'error')
     
-    # Datos para la tabla del panel
     all_users = User.query.all()
     return render_template('admin.html', user=current_user, all_users=all_users, now=datetime.utcnow(), timedelta=timedelta)
 
-# --- BOTÓN ROJO (RESET DB) ---
 @app.route('/admin/reset_db_danger', methods=['POST'])
 def reset_db_danger():
     if 'user_id' not in session: return redirect(url_for('auth'))
@@ -266,13 +260,15 @@ def reset_db_danger():
     flash('♻ BASE DE DATOS REINICIADA.', 'success')
     return redirect(url_for('admin_panel'))
 
-# --- INICIALIZACIÓN ---
+# --- INICIALIZACIÓN (CORREGIDA PARA RENDER) ---
+# Ejecutar esto siempre que se importa el archivo (Gunicorn)
+with app.app_context():
+    db.create_all()
+    if not Changelog.query.first():
+        db.session.add(Changelog(version="v1.0.0", description="Lanzamiento Oficial - Sistema de Pagos Activo"))
+        db.session.add(Changelog(version="v0.7.5", description="Panel Dios y Roles Staff implementados"))
+        db.session.commit()
+
+# Solo ejecutar el servidor dev si es local
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-        if not Changelog.query.first():
-            db.session.add(Changelog(version="v1.0.0", description="Lanzamiento Oficial - Sistema de Pagos Activo"))
-            db.session.add(Changelog(version="v0.7.5", description="Panel Dios y Roles Staff implementados"))
-            db.session.commit()
-            
     app.run(debug=True, port=5000)
