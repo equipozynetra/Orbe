@@ -6,9 +6,12 @@ from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadTimeSignat
 from email.header import Header
 from datetime import datetime 
 import random 
+from whitenoise import WhiteNoise
+import os
 
 # --- CONFIGURACIÓN DEL SISTEMA ---
 app = Flask(__name__)
+app.wsgi_app = WhiteNoise(app.wsgi_app, root='static/')
 app.config['SECRET_KEY'] = 'orbe_core_system_key_v1'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///orbe.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
