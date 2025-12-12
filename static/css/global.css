@@ -84,3 +84,41 @@ a { text-decoration: none; color: inherit; transition: 0.3s; }
         overflow-y: auto;
     }
 }
+
+/* --- FIX DE SCROLL PARA MÓVILES (PORTADA) --- */
+@media (max-width: 768px) {
+    
+    /* 1. Permitir deslizar en toda la web */
+    body, html {
+        overflow-y: auto !important; /* Reactiva el scroll vertical */
+        height: auto !important;     /* Permite que la página crezca más del 100% */
+    }
+
+    /* 2. Arreglar el fondo para que no se corte al bajar */
+    .grid-background {
+        position: fixed; /* El fondo se queda quieto mientras el contenido se mueve */
+        top: 0; left: 0;
+        width: 100%; height: 100vh;
+        z-index: -1;
+    }
+
+    /* 3. Espacio extra para la portada */
+    /* Si usas la clase .layout o .container en la portada */
+    .layout, .container {
+        height: auto;
+        min-height: 100vh;
+        padding-bottom: 50px; /* Espacio al final para que no quede pegado */
+        justify-content: flex-start; /* Empezar desde arriba */
+    }
+
+    /* 4. Ajustar textos grandes de la portada para que no se salgan */
+    .headline {
+        font-size: 2.5rem; /* Texto más pequeño en móvil */
+        line-height: 1.2;
+    }
+    
+    .sub-headline {
+        font-size: 1rem;
+        padding: 0 10px;
+    }
+}
