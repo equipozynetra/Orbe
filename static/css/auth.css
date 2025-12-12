@@ -192,3 +192,8 @@
 .btn-login.disabled {
     opacity: 0.5; cursor: not-allowed; background: #333;
 }
+
+/* --- FIX MÓVIL PARA SLIDER --- */
+.slider-handle {
+    touch-action: none; /* Desactiva gestos del navegador sobre el botón */
+}

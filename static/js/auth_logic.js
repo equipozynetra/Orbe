@@ -41,34 +41,62 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // --- 3. PUZZLE ORBE (Slider de Sincronización) ---
+    // --- 3. PUZZLE ORBE (Compatibilidad Móvil + PC) ---
     const slider = document.getElementById('puzzle-slider');
     const handle = document.getElementById('puzzle-handle');
     const overlay = document.getElementById('puzzle-overlay');
     const submitBtn = document.getElementById('submit-btn');
     const puzzleStatus = document.getElementById('puzzle-status');
+    const hiddenInput = document.getElementById('captcha-solved');
+    
     let isDragging = false;
 
     if (slider && handle) {
+        // EVENTOS RATÓN (PC)
         handle.addEventListener('mousedown', startDrag);
-        document.addEventListener('mouseup', endDrag);
         document.addEventListener('mousemove', drag);
+        document.addEventListener('mouseup', endDrag);
 
-        function startDrag(e) { isDragging = true; }
+        // EVENTOS TÁCTILES (MÓVIL)
+        handle.addEventListener('touchstart', startDrag, { passive: false });
+        document.addEventListener('touchmove', drag, { passive: false });
+        document.addEventListener('touchend', endDrag);
+
+        function startDrag(e) {
+            // Solo iniciamos si el botón aún no está habilitado
+            if (submitBtn.disabled) {
+                isDragging = true;
+            }
+        }
 
         function drag(e) {
             if (!isDragging) return;
-            let containerRect = slider.getBoundingClientRect();
-            let x = e.clientX - containerRect.left;
             
-            // Limites
+            // Evitar que la pantalla se mueva (scroll) mientras arrastramos el slider en móvil
+            if(e.type === 'touchmove') {
+                e.preventDefault(); 
+            }
+
+            // Obtener la posición X (Mouse o Dedo)
+            let clientX;
+            if (e.type === 'touchmove') {
+                clientX = e.touches[0].clientX;
+            } else {
+                clientX = e.clientX;
+            }
+
+            let containerRect = slider.getBoundingClientRect();
+            let x = clientX - containerRect.left;
+            
+            // Límites del slider
             if (x < 0) x = 0;
             if (x > containerRect.width - handle.offsetWidth) x = containerRect.width - handle.offsetWidth;
 
+            // Actualizar visualmente
             handle.style.left = x + 'px';
             overlay.style.width = x + 'px';
 
-            // Verificar si llegó al final (con un margen de error)
+            // Verificar si llegó al final
             if (x >= (containerRect.width - handle.offsetWidth - 5)) {
                 unlockSystem();
             }
@@ -77,16 +105,30 @@ document.addEventListener('DOMContentLoaded', function() {
         function endDrag() {
             if (!isDragging) return;
             isDragging = false;
-            // Si no está desbloqueado, volver al inicio
-            if (!submitBtn.disabled) return;
             
-            handle.style.left = '0px';
-            overlay.style.width = '0px';
+            // Si no se completó, volver al inicio (efecto rebote)
+            if (submitBtn.disabled) {
+                handle.style.left = '0px';
+                overlay.style.width = '0px';
+                handle.style.transition = 'left 0.3s ease';
+                overlay.style.transition = 'width 0.3s ease';
+                
+                // Quitar transición después de la animación para que el drag sea fluido
+                setTimeout(() => {
+                    handle.style.transition = '';
+                    overlay.style.transition = '';
+                }, 300);
+            }
         }
 
         function unlockSystem() {
             isDragging = false;
+            
+            // Fijar al final
             handle.style.left = (slider.offsetWidth - handle.offsetWidth) + 'px';
+            overlay.style.width = '100%';
+            
+            // Cambios visuales
             slider.classList.add('unlocked');
             puzzleStatus.innerText = "Sincronización Completa";
             puzzleStatus.style.color = "#00ff9d";
@@ -95,8 +137,8 @@ document.addEventListener('DOMContentLoaded', function() {
             submitBtn.disabled = false;
             submitBtn.classList.remove('disabled');
             
-            // Campo oculto para decirle al servidor que se resolvió
-            document.getElementById('captcha-solved').value = "true";
+            // Decirle al servidor que somos humanos
+            if(hiddenInput) hiddenInput.value = "true";
         }
     }
 });
