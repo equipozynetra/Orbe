@@ -284,13 +284,23 @@ def reset_db_danger():
     flash('♻ BASE DE DATOS REINICIADA.', 'success')
     return redirect(url_for('admin_panel'))
 
-# --- INICIALIZACIÓN ---
-if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
+# --- INICIALIZACIÓN ROBUSTA ---
+
+# Esta función se ejecutará automáticamente cuando Gunicorn importe 'app'
+with app.app_context():
+    try:
+        db.create_all() # Intentar crear tablas
+        
+        # Inicializar Changelog si está vacío
         if not Changelog.query.first():
             db.session.add(Changelog(version="v1.0.0", description="Lanzamiento Oficial - Sistema de Pagos Activo"))
             db.session.add(Changelog(version="v0.7.5", description="Panel Dios y Roles Staff implementados"))
             db.session.commit()
+            print("--- BASE DE DATOS INICIALIZADA ---")
             
+    except Exception as e:
+        print(f"--- ERROR INICIALIZANDO DB: {e} ---")
+
+# Solo ejecutar el servidor dev si es local
+if __name__ == '__main__':
     app.run(debug=True, port=5000)
