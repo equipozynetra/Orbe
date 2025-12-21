@@ -2,7 +2,6 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 import flask_mail 
-from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadTimeSignature
 from email.header import Header
 from datetime import datetime, timedelta
 import random 
@@ -10,7 +9,6 @@ import threading
 from whitenoise import WhiteNoise
 import os
 
-# --- CONFIGURACIÓN DEL SISTEMA ---
 app = Flask(__name__)
 app.wsgi_app = WhiteNoise(app.wsgi_app, root='static/')
 
@@ -18,23 +16,19 @@ app.config['SECRET_KEY'] = 'orbe_core_system_key_v1'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///orbe.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# --- CONFIGURACIÓN DE EMAIL (MAILJET - LA DEFINITIVA) ---
-app.config['MAIL_SERVER'] = 'in-v3.mailjet.com'  # Servidor de Mailjet
-app.config['MAIL_PORT'] = 587
-# Pon aquí tu API KEY de Mailjet
-app.config['MAIL_USERNAME'] = '4481322aa738103dc281bd84f53b303a' 
-# Pon aquí tu SECRET KEY de Mailjet
-app.config['MAIL_PASSWORD'] = 'a8837ceb1c5d88714bf27b27f5d0673b'
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USE_SSL'] = False
-# DEBE SER EL CORREO QUE REGISTRASTE EN MAILJET
-app.config['MAIL_DEFAULT_SENDER'] = ('Orbe System', 'equipozynetra@gmail.com')
+# --- CONFIGURACIÓN EMAIL (USANDO TU CONFIGURACIÓN ACTUAL) ---
+# Asegúrate de que esto funciona, si no, usa Mailjet como te recomendé.
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 465
+app.config['MAIL_USERNAME'] = 'equipozynetra@gmail.com' 
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD') 
+app.config['MAIL_USE_TLS'] = False
+app.config['MAIL_USE_SSL'] = True
+app.config['MAIL_DEFAULT_SENDER'] = ('Orbe System', app.config['MAIL_USERNAME'])
 
 db = SQLAlchemy(app)
 mail = flask_mail.Mail(app)
-s = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 
-# --- SISTEMA DE NIVELES ---
 TIERS = {
     'free':  {'limit': 3,      'name': 'FREE',  'color': '#888888', 'price': 0},
     'gold':  {'limit': 10,     'name': 'GOLD',  'color': '#ffd700', 'price': 9},
@@ -53,6 +47,11 @@ class User(db.Model):
     is_verified = db.Column(db.Boolean, default=False)
     plan = db.Column(db.String(20), default='free') 
     last_active = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # NUEVO: OTP
+    otp_code = db.Column(db.String(6), nullable=True)
+    otp_expiry = db.Column(db.DateTime, nullable=True)
+    
     chats = db.relationship('Chat', backref='author', lazy=True)
 
 class Chat(db.Model):
@@ -83,19 +82,18 @@ def update_last_active():
             if user:
                 user.last_active = datetime.utcnow()
                 db.session.commit()
-            else:
-                session.pop('user_id', None)
+            else: session.pop('user_id', None)
         except: pass
 
 def send_async_email(app_context, msg):
     with app_context:
         try:
             mail.send(msg)
-            print("--- [EMAIL] Enviado con Mailjet ---")
+            print("--- [EMAIL] OTP ENVIADO ---")
         except Exception as e:
             print(f"--- [EMAIL ERROR] {e} ---")
 
-def send_email(to, subject, template_name, **kwargs):
+def send_email(to, subject, body_html):
     try:
         safe_subject = Header(subject, 'utf-8').encode()
         msg = flask_mail.Message(
@@ -103,8 +101,7 @@ def send_email(to, subject, template_name, **kwargs):
             recipients=[to],
             sender=app.config['MAIL_DEFAULT_SENDER']
         )
-        msg.body = "" 
-        msg.html = render_template(f'emails/{template_name}.html', **kwargs)
+        msg.html = body_html
         msg.charset = 'utf-8'
         
         app_context = app.app_context()
@@ -115,6 +112,7 @@ def send_email(to, subject, template_name, **kwargs):
         print(f"--- [EMAIL CRITICAL] {e} ---")
         return False
 
+# --- RUTAS ---
 @app.route('/')
 def home(): return render_template('index.html')
 
@@ -124,12 +122,13 @@ def auth():
         email = request.form.get('email').strip().lower()
         password = request.form.get('password')
         user = User.query.filter_by(email=email).first()
-        
         if user and check_password_hash(user.password_hash, password):
             if not user.is_verified:
-                flash('Acceso Denegado: Revisa tu correo (Spam incluido).', 'error'); return render_template('auth.html')
+                # Si intenta entrar y no está verificado, le mandamos a verificar
+                session['temp_email'] = email # Guardamos email temporalmente
+                return redirect(url_for('verify_otp'))
+            
             session['user_id'] = user.id; session['user_name'] = user.alias
-            if user.plan != 'owner': send_email(user.email, 'ORBE - Nueva Conexión', 'login_alert', user=user.alias)
             return redirect(url_for('dashboard'))
         else: flash('Credenciales incorrectas.', 'error')
     return render_template('auth.html')
@@ -137,33 +136,74 @@ def auth():
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        if request.form.get('captcha_solved') != 'true': flash('Captcha incorrecto.', 'error'); return redirect(url_for('register'))
-        alias = request.form.get('alias').strip(); email = request.form.get('email').strip().lower(); password = request.form.get('password')
-        if password != request.form.get('confirm_password'): flash('Passwords no coinciden.', 'error'); return redirect(url_for('register'))
-        if User.query.filter_by(email=email).first(): flash('Email en uso.', 'error'); return redirect(url_for('register'))
+        alias = request.form.get('alias').strip()
+        email = request.form.get('email').strip().lower()
+        password = request.form.get('password')
+        
+        if User.query.filter_by(email=email).first(): 
+            flash('Email en uso.', 'error'); return redirect(url_for('register'))
         
         target_plan = 'free'; is_verified_status = False
         if email == 'equipozynetra@gmail.com': target_plan = 'owner'; is_verified_status = True
 
-        new_user = User(alias=alias, email=email, password_hash=generate_password_hash(password, method='pbkdf2:sha256'), plan=target_plan, is_verified=is_verified_status)
+        # Generar OTP de 6 dígitos
+        otp = str(random.randint(100000, 999999))
+        expiry = datetime.utcnow() + timedelta(minutes=5)
+
+        new_user = User(
+            alias=alias, email=email, 
+            password_hash=generate_password_hash(password, method='pbkdf2:sha256'), 
+            plan=target_plan, 
+            is_verified=is_verified_status,
+            otp_code=otp,
+            otp_expiry=expiry
+        )
         db.session.add(new_user); db.session.commit()
         
-        if target_plan == 'owner': flash('Bienvenido Creador.', 'success'); return redirect(url_for('auth'))
+        if target_plan == 'owner': return redirect(url_for('auth'))
         
-        token = s.dumps(email, salt='email-confirm')
-        link = url_for('confirm_email', token=token, _external=True)
-        send_email(email, 'ORBE - Verificar Cuenta', 'verify_email', user=alias, link=link)
+        # Guardar email en sesión temporal para la pantalla de verificación
+        session['temp_email'] = email
         
-        flash('Registro exitoso. Revisa tu email (incluso Spam).', 'success'); return redirect(url_for('auth'))
+        # Enviar Correo OTP
+        html_body = f"""
+        <div style="background:#000; color:#fff; padding:20px; font-family:monospace; text-align:center;">
+            <h1>ORBE ACCESS CODE</h1>
+            <p>Tu código de verificación es:</p>
+            <h2 style="color:#00ff9d; font-size:30px; letter-spacing:5px;">{otp}</h2>
+            <p>Expira en 5 minutos.</p>
+        </div>
+        """
+        send_email(email, 'ORBE - Código de Verificación', html_body)
+        
+        return redirect(url_for('verify_otp'))
     return render_template('register.html')
 
-@app.route('/confirm_email/<token>')
-def confirm_email(token):
-    try: email = s.loads(token, salt='email-confirm', max_age=300)
-    except: return "Token inválido"
-    user = User.query.filter_by(email=email).first_or_404()
-    if not user.is_verified: user.is_verified = True; db.session.add(user); db.session.commit(); flash('Verificado.', 'success')
-    return redirect(url_for('auth'))
+# --- NUEVA RUTA: PANTALLA DE VERIFICACIÓN OTP ---
+@app.route('/verify_otp', methods=['GET', 'POST'])
+def verify_otp():
+    if 'temp_email' not in session: return redirect(url_for('auth'))
+    
+    if request.method == 'POST':
+        code = request.form.get('otp_code')
+        email = session['temp_email']
+        user = User.query.filter_by(email=email).first()
+        
+        if not user: 
+            session.pop('temp_email', None); return redirect(url_for('register'))
+            
+        # Validar Código y Tiempo
+        if user.otp_code == code and user.otp_expiry > datetime.utcnow():
+            user.is_verified = True
+            user.otp_code = None # Limpiar código usado
+            db.session.commit()
+            session.pop('temp_email', None) # Limpiar sesión temporal
+            flash('Cuenta verificada. Inicie sesión.', 'success')
+            return redirect(url_for('auth'))
+        else:
+            flash('Código incorrecto o expirado.', 'error')
+            
+    return render_template('verify_otp.html')
 
 @app.route('/logout')
 def logout(): session.pop('user_id', None); return redirect(url_for('home'))
@@ -221,8 +261,6 @@ def process_payment():
     if plan_name in ['gold', 'elite', 'omega']:
         user = User.query.get(session['user_id'])
         user.plan = plan_name; db.session.commit()
-        price = TIERS[plan_name]['price']
-        send_email(user.email, f'Recibo Orbe: Plan {plan_name.upper()}', 'receipt', user=user.alias, plan=plan_name, price=price, date=datetime.now().strftime("%d/%m/%Y"), order_id=order_id)
         return jsonify({'success': True})
     return jsonify({'error': 'Invalid'}), 400
 
@@ -240,6 +278,7 @@ def admin_panel():
         target_user = User.query.filter_by(email=target_email).first()
         if target_user: target_user.plan = new_plan; db.session.commit(); flash(f'Usuario actualizado', 'success')
         else: flash('Usuario no encontrado', 'error')
+    
     all_users = User.query.all()
     return render_template('admin.html', user=current_user, all_users=all_users, now=datetime.utcnow(), timedelta=timedelta)
 
@@ -254,6 +293,7 @@ def reset_db_danger():
     flash('♻ BASE DE DATOS REINICIADA.', 'success')
     return redirect(url_for('admin_panel'))
 
+# --- INIT ---
 with app.app_context():
     try:
         db.create_all()
