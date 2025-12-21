@@ -6,33 +6,33 @@ from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadTimeSignat
 from email.header import Header
 from datetime import datetime, timedelta
 import random 
-import threading # IMPORTANTE: Para que el email no congele la web
+import threading 
 from whitenoise import WhiteNoise
 import os
 
 # --- CONFIGURACIÓN DEL SISTEMA ---
 app = Flask(__name__)
-app.wsgi_app = WhiteNoise(app.wsgi_app, root='static/') # Fix para Render
+app.wsgi_app = WhiteNoise(app.wsgi_app, root='static/')
 
 app.config['SECRET_KEY'] = 'orbe_core_system_key_v1'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///orbe.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# --- CONFIGURACIÓN DE EMAIL ---
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 465
-# RECOMENDADO: Usar os.environ.get para leer de Render, o dejar tus datos fijos si prefieres
+# --- CONFIGURACIÓN DE EMAIL (SEGURA) ---
+app.config['MAIL_SERVER'] = 'smtp-relay.brevo.com'
+app.config['MAIL_PORT'] = 587
 app.config['MAIL_USERNAME'] = 'equipozynetra@gmail.com' 
-app.config['MAIL_PASSWORD'] = 'vkpdsizdisfohzob' 
-app.config['MAIL_USE_TLS'] = False
-app.config['MAIL_USE_SSL'] = True
+# IMPORTANTE: Esto le dice a la app "Busca la contraseña en la configuración de Render"
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD') 
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USE_SSL'] = False
 app.config['MAIL_DEFAULT_SENDER'] = ('Orbe System', app.config['MAIL_USERNAME'])
 
 db = SQLAlchemy(app)
 mail = flask_mail.Mail(app)
 s = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 
-# --- SISTEMA DE NIVELES Y PRECIOS ---
+# --- SISTEMA DE NIVELES ---
 TIERS = {
     'free':  {'limit': 3,      'name': 'FREE',  'color': '#888888', 'price': 0},
     'gold':  {'limit': 10,     'name': 'GOLD',  'color': '#ffd700', 'price': 9},
@@ -43,7 +43,7 @@ TIERS = {
     'owner':   {'limit': 999999, 'name': 'DUEÑO',   'color': '#ffffff', 'price': 0}
 }
 
-# --- MODELOS DE BASE DE DATOS ---
+# --- MODELOS ---
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     alias = db.Column(db.String(50), nullable=False)
@@ -74,7 +74,7 @@ class Changelog(db.Model):
     description = db.Column(db.String(200), nullable=False)
     date = db.Column(db.DateTime, default=datetime.utcnow)
 
-# --- MIDDLEWARE: TRACKING ACTIVIDAD ---
+# --- TRACKING ---
 @app.before_request
 def update_last_active():
     if 'user_id' in session:
@@ -88,14 +88,14 @@ def update_last_active():
         except:
             pass
 
-# --- FUNCIÓN EMAIL ASÍNCRONA (SOLUCIÓN A LA LENTITUD) ---
+# --- EMAIL ASÍNCRONO ---
 def send_async_email(app_context, msg):
     with app_context:
         try:
             mail.send(msg)
-            print("--- [EMAIL] Enviado exitosamente ---")
+            print("--- [EMAIL] Enviado (Brevo) ---")
         except Exception as e:
-            print(f"--- [EMAIL ERROR] Falló el envío: {e} ---")
+            print(f"--- [EMAIL ERROR] {e} ---")
 
 def send_email(to, subject, template_name, **kwargs):
     try:
@@ -109,39 +109,30 @@ def send_email(to, subject, template_name, **kwargs):
         msg.html = render_template(f'emails/{template_name}.html', **kwargs)
         msg.charset = 'utf-8'
         
-        # Obtenemos el contexto de la app para pasarlo al hilo
         app_context = app.app_context()
-        
-        # Lanzar hilo separado
         thr = threading.Thread(target=send_async_email, args=[app_context, msg])
         thr.start()
         return True
     except Exception as e:
-        print(f"--- [EMAIL CRITICAL] Error inicializando: {e} ---")
+        print(f"--- [EMAIL ERROR INIT] {e} ---")
         return False
 
-# --- RUTAS PRINCIPALES ---
-
+# --- RUTAS ---
 @app.route('/')
 def home(): return render_template('index.html')
 
 @app.route('/auth', methods=['GET', 'POST'])
 def auth():
     if request.method == 'POST':
-        # Limpieza de datos
         email = request.form.get('email').strip().lower()
         password = request.form.get('password')
-        
         user = User.query.filter_by(email=email).first()
         
         if user and check_password_hash(user.password_hash, password):
             if not user.is_verified:
-                flash('Acceso Denegado: Cuenta no verificada.', 'error'); return render_template('auth.html')
+                flash('Acceso Denegado: Revise su correo para verificar.', 'error'); return render_template('auth.html')
             session['user_id'] = user.id; session['user_name'] = user.alias
-            
-            if user.plan != 'owner':
-                send_email(user.email, 'ORBE - Nueva Conexión', 'login_alert', user=user.alias)
-            
+            if user.plan != 'owner': send_email(user.email, 'ORBE - Nueva Conexión', 'login_alert', user=user.alias)
             return redirect(url_for('dashboard'))
         else: flash('Credenciales incorrectas.', 'error')
     return render_template('auth.html')
@@ -150,30 +141,22 @@ def auth():
 def register():
     if request.method == 'POST':
         if request.form.get('captcha_solved') != 'true': flash('Captcha incorrecto.', 'error'); return redirect(url_for('register'))
-        
-        alias = request.form.get('alias').strip()
-        email = request.form.get('email').strip().lower()
-        password = request.form.get('password')
-        
+        alias = request.form.get('alias').strip(); email = request.form.get('email').strip().lower(); password = request.form.get('password')
         if password != request.form.get('confirm_password'): flash('Passwords no coinciden.', 'error'); return redirect(url_for('register'))
         if User.query.filter_by(email=email).first(): flash('Email en uso.', 'error'); return redirect(url_for('register'))
         
-        # Lógica Dueño
         target_plan = 'free'; is_verified_status = False
-        if email == 'equipozynetra@gmail.com': 
-            target_plan = 'owner'; is_verified_status = True
+        if email == 'equipozynetra@gmail.com': target_plan = 'owner'; is_verified_status = True
 
         new_user = User(alias=alias, email=email, password_hash=generate_password_hash(password, method='pbkdf2:sha256'), plan=target_plan, is_verified=is_verified_status)
         db.session.add(new_user); db.session.commit()
         
         if target_plan == 'owner': 
-            flash('Bienvenido Creador. Acceso Total Concedido.', 'success'); return redirect(url_for('auth'))
+            flash('Bienvenido Creador.', 'success'); return redirect(url_for('auth'))
         
-        # Envío de correo
         token = s.dumps(email, salt='email-confirm')
         link = url_for('confirm_email', token=token, _external=True)
         send_email(email, 'ORBE - Verificar Cuenta', 'verify_email', user=alias, link=link)
-        
         flash('Registro exitoso. Verifique su email.', 'success'); return redirect(url_for('auth'))
     return render_template('register.html')
 
@@ -187,8 +170,6 @@ def confirm_email(token):
 
 @app.route('/logout')
 def logout(): session.pop('user_id', None); return redirect(url_for('home'))
-
-# --- RUTAS APLICACIÓN ---
 
 @app.route('/dashboard')
 def dashboard():
@@ -240,13 +221,11 @@ def pricing():
 def process_payment():
     if 'user_id' not in session: return jsonify({'error': 'Unauthorized'}), 401
     data = request.json; plan_name = data.get('plan'); order_id = data.get('orderID')
-    
     if plan_name in ['gold', 'elite', 'omega']:
         user = User.query.get(session['user_id'])
         user.plan = plan_name; db.session.commit()
         price = TIERS[plan_name]['price']
-        date_str = datetime.now().strftime("%d/%m/%Y %H:%M")
-        send_email(user.email, f'Recibo Orbe: Plan {plan_name.upper()}', 'receipt', user=user.alias, plan=plan_name, price=price, date=date_str, order_id=order_id)
+        send_email(user.email, f'Recibo Orbe: Plan {plan_name.upper()}', 'receipt', user=user.alias, plan=plan_name, price=price, date=datetime.now().strftime("%d/%m/%Y"), order_id=order_id)
         return jsonify({'success': True})
     return jsonify({'error': 'Invalid'}), 400
 
@@ -257,13 +236,13 @@ def api_status(): return {'cpu': random.randint(10, 95), 'ram': random.randint(2
 def admin_panel():
     if 'user_id' not in session: return redirect(url_for('auth'))
     current_user = User.query.get(session['user_id'])
-    if current_user.plan != 'owner': flash('ACCESO DENEGADO.', 'premium_error'); return redirect(url_for('dashboard'))
+    if current_user.plan != 'owner': return redirect(url_for('dashboard'))
     
     if request.method == 'POST':
         target_email = request.form.get('target_email'); new_plan = request.form.get('new_plan')
         target_user = User.query.filter_by(email=target_email).first()
-        if target_user: target_user.plan = new_plan; db.session.commit(); flash(f'Usuario actualizado a {new_plan.upper()}', 'success')
-        else: flash('Usuario no encontrado.', 'error')
+        if target_user: target_user.plan = new_plan; db.session.commit(); flash(f'Usuario actualizado', 'success')
+        else: flash('Usuario no encontrado', 'error')
     
     all_users = User.query.all()
     return render_template('admin.html', user=current_user, all_users=all_users, now=datetime.utcnow(), timedelta=timedelta)
@@ -273,34 +252,20 @@ def reset_db_danger():
     if 'user_id' not in session: return redirect(url_for('auth'))
     current_user = User.query.get(session['user_id'])
     if current_user.plan != 'owner': return "ACCESO DENEGADO"
-    
     db.drop_all(); db.create_all()
-    
-    # Restaurar al Dueño
     owner = User(alias=current_user.alias, email=current_user.email, password_hash=current_user.password_hash, plan='owner', is_verified=True)
-    db.session.add(owner); db.session.commit()
-    session['user_id'] = owner.id
-    
+    db.session.add(owner); db.session.commit(); session['user_id'] = owner.id
     flash('♻ BASE DE DATOS REINICIADA.', 'success')
     return redirect(url_for('admin_panel'))
 
-# --- INICIALIZACIÓN ROBUSTA ---
-
-# Esta función se ejecutará automáticamente cuando Gunicorn importe 'app'
+# --- INIT ---
 with app.app_context():
     try:
-        db.create_all() # Intentar crear tablas
-        
-        # Inicializar Changelog si está vacío
+        db.create_all()
         if not Changelog.query.first():
-            db.session.add(Changelog(version="v1.0.0", description="Lanzamiento Oficial - Sistema de Pagos Activo"))
-            db.session.add(Changelog(version="v0.7.5", description="Panel Dios y Roles Staff implementados"))
+            db.session.add(Changelog(version="v1.0.0", description="Lanzamiento Oficial"))
             db.session.commit()
-            print("--- BASE DE DATOS INICIALIZADA ---")
-            
-    except Exception as e:
-        print(f"--- ERROR INICIALIZANDO DB: {e} ---")
+    except Exception as e: print(f"DB Init Error: {e}")
 
-# Solo ejecutar el servidor dev si es local
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
