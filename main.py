@@ -2,13 +2,14 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 import flask_mail 
+from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadTimeSignature
 from email.header import Header
 from datetime import datetime, timedelta
 import random 
-import threading 
 from whitenoise import WhiteNoise
 import os
 
+# --- CONFIGURACIÓN DEL SISTEMA ---
 app = Flask(__name__)
 app.wsgi_app = WhiteNoise(app.wsgi_app, root='static/')
 
@@ -16,19 +17,22 @@ app.config['SECRET_KEY'] = 'orbe_core_system_key_v1'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///orbe.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# --- CONFIGURACIÓN EMAIL (USANDO TU CONFIGURACIÓN ACTUAL) ---
-# Asegúrate de que esto funciona, si no, usa Mailjet como te recomendé.
+# --- CONFIGURACIÓN DE EMAIL (GMAIL ESTÁNDAR) ---
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 465
+app.config['MAIL_PORT'] = 587
 app.config['MAIL_USERNAME'] = 'equipozynetra@gmail.com' 
-app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD') 
-app.config['MAIL_USE_TLS'] = False
-app.config['MAIL_USE_SSL'] = True
+# !!! IMPORTANTE: PON TU CONTRASEÑA DE APLICACIÓN DE 16 LETRAS AQUÍ DIRECTAMENTE !!!
+app.config['MAIL_PASSWORD'] = 'klttyzyvuqvfcsai' 
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USE_SSL'] = False
 app.config['MAIL_DEFAULT_SENDER'] = ('Orbe System', app.config['MAIL_USERNAME'])
+app.config['MAIL_DEBUG'] = True # Esto nos dirá qué pasa en los logs
 
 db = SQLAlchemy(app)
 mail = flask_mail.Mail(app)
+s = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 
+# --- TIERS ---
 TIERS = {
     'free':  {'limit': 3,      'name': 'FREE',  'color': '#888888', 'price': 0},
     'gold':  {'limit': 10,     'name': 'GOLD',  'color': '#ffd700', 'price': 9},
@@ -47,11 +51,8 @@ class User(db.Model):
     is_verified = db.Column(db.Boolean, default=False)
     plan = db.Column(db.String(20), default='free') 
     last_active = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # NUEVO: OTP
     otp_code = db.Column(db.String(6), nullable=True)
     otp_expiry = db.Column(db.DateTime, nullable=True)
-    
     chats = db.relationship('Chat', backref='author', lazy=True)
 
 class Chat(db.Model):
@@ -85,31 +86,24 @@ def update_last_active():
             else: session.pop('user_id', None)
         except: pass
 
-def send_async_email(app_context, msg):
-    with app_context:
-        try:
-            mail.send(msg)
-            print("--- [EMAIL] OTP ENVIADO ---")
-        except Exception as e:
-            print(f"--- [EMAIL ERROR] {e} ---")
-
+# --- FUNCIÓN EMAIL SÍNCRONA (DIRECTA PARA DEPURAR) ---
 def send_email(to, subject, body_html):
     try:
-        safe_subject = Header(subject, 'utf-8').encode()
+        print(f"--- CONECTANDO CON GMAIL PARA: {to} ---")
         msg = flask_mail.Message(
-            subject=safe_subject,
+            subject=subject,
             recipients=[to],
             sender=app.config['MAIL_DEFAULT_SENDER']
         )
         msg.html = body_html
-        msg.charset = 'utf-8'
         
-        app_context = app.app_context()
-        thr = threading.Thread(target=send_async_email, args=[app_context, msg])
-        thr.start()
+        # Enviar directamente (esperará respuesta del servidor)
+        mail.send(msg)
+        
+        print("--- ¡CORREO ENVIADO CON ÉXITO! ---")
         return True
     except Exception as e:
-        print(f"--- [EMAIL CRITICAL] {e} ---")
+        print(f"--- ERROR FATAL SMTP: {e} ---")
         return False
 
 # --- RUTAS ---
@@ -122,10 +116,20 @@ def auth():
         email = request.form.get('email').strip().lower()
         password = request.form.get('password')
         user = User.query.filter_by(email=email).first()
+        
         if user and check_password_hash(user.password_hash, password):
             if not user.is_verified:
-                # Si intenta entrar y no está verificado, le mandamos a verificar
-                session['temp_email'] = email # Guardamos email temporalmente
+                # Reenviar OTP si intenta entrar sin verificar
+                otp = str(random.randint(100000, 999999))
+                user.otp_code = otp
+                user.otp_expiry = datetime.utcnow() + timedelta(minutes=5)
+                db.session.commit()
+                
+                html_body = f"<h1>Código ORBE</h1><h2>{otp}</h2>"
+                send_email(email, 'Tu Código de Acceso', html_body)
+                
+                session['temp_email'] = email
+                flash('Cuenta no verificada. Hemos enviado un nuevo código.', 'error')
                 return redirect(url_for('verify_otp'))
             
             session['user_id'] = user.id; session['user_name'] = user.alias
@@ -146,40 +150,36 @@ def register():
         target_plan = 'free'; is_verified_status = False
         if email == 'equipozynetra@gmail.com': target_plan = 'owner'; is_verified_status = True
 
-        # Generar OTP de 6 dígitos
         otp = str(random.randint(100000, 999999))
         expiry = datetime.utcnow() + timedelta(minutes=5)
 
-        new_user = User(
-            alias=alias, email=email, 
-            password_hash=generate_password_hash(password, method='pbkdf2:sha256'), 
-            plan=target_plan, 
-            is_verified=is_verified_status,
-            otp_code=otp,
-            otp_expiry=expiry
-        )
+        new_user = User(alias=alias, email=email, password_hash=generate_password_hash(password, method='pbkdf2:sha256'), plan=target_plan, is_verified=is_verified_status, otp_code=otp, otp_expiry=expiry)
         db.session.add(new_user); db.session.commit()
         
         if target_plan == 'owner': return redirect(url_for('auth'))
         
-        # Guardar email en sesión temporal para la pantalla de verificación
         session['temp_email'] = email
         
         # Enviar Correo OTP
         html_body = f"""
-        <div style="background:#000; color:#fff; padding:20px; font-family:monospace; text-align:center;">
-            <h1>ORBE ACCESS CODE</h1>
-            <p>Tu código de verificación es:</p>
-            <h2 style="color:#00ff9d; font-size:30px; letter-spacing:5px;">{otp}</h2>
-            <p>Expira en 5 minutos.</p>
+        <div style="background:#000; color:#fff; padding:30px; font-family:monospace; text-align:center;">
+            <h1 style="color:#888;">ORBE SECURITY</h1>
+            <p>Introduce este código para activar tu nodo:</p>
+            <h2 style="color:#00ff9d; font-size:40px; letter-spacing:8px; margin:20px 0;">{otp}</h2>
+            <p>Este código expira en 5 minutos.</p>
         </div>
         """
-        send_email(email, 'ORBE - Código de Verificación', html_body)
+        
+        success = send_email(email, 'ORBE - Tu Código de Verificación', html_body)
+        
+        if success:
+            flash('Código enviado a tu correo.', 'success')
+        else:
+            flash('Error de conexión con el servidor de correo.', 'error')
         
         return redirect(url_for('verify_otp'))
     return render_template('register.html')
 
-# --- NUEVA RUTA: PANTALLA DE VERIFICACIÓN OTP ---
 @app.route('/verify_otp', methods=['GET', 'POST'])
 def verify_otp():
     if 'temp_email' not in session: return redirect(url_for('auth'))
@@ -189,16 +189,12 @@ def verify_otp():
         email = session['temp_email']
         user = User.query.filter_by(email=email).first()
         
-        if not user: 
-            session.pop('temp_email', None); return redirect(url_for('register'))
+        if not user: session.pop('temp_email', None); return redirect(url_for('register'))
             
-        # Validar Código y Tiempo
         if user.otp_code == code and user.otp_expiry > datetime.utcnow():
-            user.is_verified = True
-            user.otp_code = None # Limpiar código usado
-            db.session.commit()
-            session.pop('temp_email', None) # Limpiar sesión temporal
-            flash('Cuenta verificada. Inicie sesión.', 'success')
+            user.is_verified = True; user.otp_code = None; db.session.commit()
+            session.pop('temp_email', None)
+            flash('Verificación exitosa. Entrando...', 'success')
             return redirect(url_for('auth'))
         else:
             flash('Código incorrecto o expirado.', 'error')
@@ -293,7 +289,6 @@ def reset_db_danger():
     flash('♻ BASE DE DATOS REINICIADA.', 'success')
     return redirect(url_for('admin_panel'))
 
-# --- INIT ---
 with app.app_context():
     try:
         db.create_all()
