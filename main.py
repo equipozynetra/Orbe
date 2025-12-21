@@ -21,6 +21,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # --- CONFIGURACIÓN DE EMAIL ---
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 465
+# RECOMENDADO: Usar os.environ.get para leer de Render, o dejar tus datos fijos si prefieres
 app.config['MAIL_USERNAME'] = 'equipozynetra@gmail.com' 
 app.config['MAIL_PASSWORD'] = 'vkpdsizdisfohzob' 
 app.config['MAIL_USE_TLS'] = False
@@ -88,13 +89,13 @@ def update_last_active():
             pass
 
 # --- FUNCIÓN EMAIL ASÍNCRONA (SOLUCIÓN A LA LENTITUD) ---
-def send_async_email(app, msg):
-    with app.app_context():
+def send_async_email(app_context, msg):
+    with app_context:
         try:
             mail.send(msg)
-            print("--- CORREO ENVIADO (ASYNC) ---")
+            print("--- [EMAIL] Enviado exitosamente ---")
         except Exception as e:
-            print(f"--- ERROR CORREO: {e} ---")
+            print(f"--- [EMAIL ERROR] Falló el envío: {e} ---")
 
 def send_email(to, subject, template_name, **kwargs):
     try:
@@ -108,12 +109,15 @@ def send_email(to, subject, template_name, **kwargs):
         msg.html = render_template(f'emails/{template_name}.html', **kwargs)
         msg.charset = 'utf-8'
         
-        # Lanzar hilo separado para no bloquear al usuario
-        thr = threading.Thread(target=send_async_email, args=[app, msg])
+        # Obtenemos el contexto de la app para pasarlo al hilo
+        app_context = app.app_context()
+        
+        # Lanzar hilo separado
+        thr = threading.Thread(target=send_async_email, args=[app_context, msg])
         thr.start()
         return True
     except Exception as e:
-        print(f"--- ERROR INICIALIZANDO EMAIL: {e} ---")
+        print(f"--- [EMAIL CRITICAL] Error inicializando: {e} ---")
         return False
 
 # --- RUTAS PRINCIPALES ---
@@ -165,7 +169,7 @@ def register():
         if target_plan == 'owner': 
             flash('Bienvenido Creador. Acceso Total Concedido.', 'success'); return redirect(url_for('auth'))
         
-        # Envío de correo (ahora es rápido gracias a threading)
+        # Envío de correo
         token = s.dumps(email, salt='email-confirm')
         link = url_for('confirm_email', token=token, _external=True)
         send_email(email, 'ORBE - Verificar Cuenta', 'verify_email', user=alias, link=link)
@@ -281,14 +285,12 @@ def reset_db_danger():
     return redirect(url_for('admin_panel'))
 
 # --- INICIALIZACIÓN ---
-# Ejecutar esto siempre que se importa el archivo (Gunicorn)
-with app.app_context():
-    db.create_all()
-    if not Changelog.query.first():
-        db.session.add(Changelog(version="v1.0.0", description="Lanzamiento Oficial - Sistema de Pagos Activo"))
-        db.session.add(Changelog(version="v0.7.5", description="Panel Dios y Roles Staff implementados"))
-        db.session.commit()
-
-# Solo ejecutar el servidor dev si es local
 if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
+        if not Changelog.query.first():
+            db.session.add(Changelog(version="v1.0.0", description="Lanzamiento Oficial - Sistema de Pagos Activo"))
+            db.session.add(Changelog(version="v0.7.5", description="Panel Dios y Roles Staff implementados"))
+            db.session.commit()
+            
     app.run(debug=True, port=5000)
