@@ -6,6 +6,7 @@ from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadTimeSignat
 from email.header import Header
 from datetime import datetime, timedelta
 import random 
+import threading # IMPORTANTE: Para que el email no congele la web
 from whitenoise import WhiteNoise
 import os
 
@@ -72,7 +73,7 @@ class Changelog(db.Model):
     description = db.Column(db.String(200), nullable=False)
     date = db.Column(db.DateTime, default=datetime.utcnow)
 
-# --- MIDDLEWARE: TRACKING ACTIVIDAD (BLINDADO) ---
+# --- MIDDLEWARE: TRACKING ACTIVIDAD ---
 @app.before_request
 def update_last_active():
     if 'user_id' in session:
@@ -82,13 +83,19 @@ def update_last_active():
                 user.last_active = datetime.utcnow()
                 db.session.commit()
             else:
-                # Si la sesión existe pero el usuario no (por reset de DB), limpiamos la sesión
                 session.pop('user_id', None)
         except:
-            # Si la DB no está lista, ignoramos el error para no romper la app
             pass
 
-# --- FUNCIÓN EMAIL ---
+# --- FUNCIÓN EMAIL ASÍNCRONA (SOLUCIÓN A LA LENTITUD) ---
+def send_async_email(app, msg):
+    with app.app_context():
+        try:
+            mail.send(msg)
+            print("--- CORREO ENVIADO (ASYNC) ---")
+        except Exception as e:
+            print(f"--- ERROR CORREO: {e} ---")
+
 def send_email(to, subject, template_name, **kwargs):
     try:
         safe_subject = Header(subject, 'utf-8').encode()
@@ -100,21 +107,27 @@ def send_email(to, subject, template_name, **kwargs):
         msg.body = "" 
         msg.html = render_template(f'emails/{template_name}.html', **kwargs)
         msg.charset = 'utf-8'
-        mail.send(msg)
+        
+        # Lanzar hilo separado para no bloquear al usuario
+        thr = threading.Thread(target=send_async_email, args=[app, msg])
+        thr.start()
         return True
     except Exception as e:
-        print(f"--- ERROR CRÍTICO AL ENVIAR: {e} ---")
+        print(f"--- ERROR INICIALIZANDO EMAIL: {e} ---")
         return False
 
-# --- RUTAS ---
+# --- RUTAS PRINCIPALES ---
+
 @app.route('/')
 def home(): return render_template('index.html')
 
 @app.route('/auth', methods=['GET', 'POST'])
 def auth():
     if request.method == 'POST':
-        email = request.form.get('email')
+        # Limpieza de datos
+        email = request.form.get('email').strip().lower()
         password = request.form.get('password')
+        
         user = User.query.filter_by(email=email).first()
         
         if user and check_password_hash(user.password_hash, password):
@@ -133,7 +146,10 @@ def auth():
 def register():
     if request.method == 'POST':
         if request.form.get('captcha_solved') != 'true': flash('Captcha incorrecto.', 'error'); return redirect(url_for('register'))
-        alias = request.form.get('alias'); email = request.form.get('email'); password = request.form.get('password')
+        
+        alias = request.form.get('alias').strip()
+        email = request.form.get('email').strip().lower()
+        password = request.form.get('password')
         
         if password != request.form.get('confirm_password'): flash('Passwords no coinciden.', 'error'); return redirect(url_for('register'))
         if User.query.filter_by(email=email).first(): flash('Email en uso.', 'error'); return redirect(url_for('register'))
@@ -149,9 +165,11 @@ def register():
         if target_plan == 'owner': 
             flash('Bienvenido Creador. Acceso Total Concedido.', 'success'); return redirect(url_for('auth'))
         
+        # Envío de correo (ahora es rápido gracias a threading)
         token = s.dumps(email, salt='email-confirm')
         link = url_for('confirm_email', token=token, _external=True)
         send_email(email, 'ORBE - Verificar Cuenta', 'verify_email', user=alias, link=link)
+        
         flash('Registro exitoso. Verifique su email.', 'success'); return redirect(url_for('auth'))
     return render_template('register.html')
 
@@ -165,6 +183,8 @@ def confirm_email(token):
 
 @app.route('/logout')
 def logout(): session.pop('user_id', None); return redirect(url_for('home'))
+
+# --- RUTAS APLICACIÓN ---
 
 @app.route('/dashboard')
 def dashboard():
@@ -260,7 +280,7 @@ def reset_db_danger():
     flash('♻ BASE DE DATOS REINICIADA.', 'success')
     return redirect(url_for('admin_panel'))
 
-# --- INICIALIZACIÓN (CORREGIDA PARA RENDER) ---
+# --- INICIALIZACIÓN ---
 # Ejecutar esto siempre que se importa el archivo (Gunicorn)
 with app.app_context():
     db.create_all()
