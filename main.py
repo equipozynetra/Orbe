@@ -6,29 +6,29 @@ from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadTimeSignat
 from email.header import Header
 from datetime import datetime, timedelta
 import random 
-import threading # CRÍTICO: Para envío en segundo plano
+import threading 
 from whitenoise import WhiteNoise
 import os
 
 # --- CONFIGURACIÓN DEL SISTEMA ---
 app = Flask(__name__)
-app.wsgi_app = WhiteNoise(app.wsgi_app, root='static/') # Fix para Render
+app.wsgi_app = WhiteNoise(app.wsgi_app, root='static/')
 
 app.config['SECRET_KEY'] = 'orbe_core_system_key_v1'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///orbe.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# --- CONFIGURACIÓN DE EMAIL (GMAIL BLINDADO) ---
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 465 # Puerto SSL Seguro (Menos bloqueos)
-app.config['MAIL_USERNAME'] = 'equipozynetra@gmail.com' 
-# IMPORTANTE: Asegúrate de que esta variable esté en Render
-app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD') 
-app.config['MAIL_USE_TLS'] = False
-app.config['MAIL_USE_SSL'] = True # SSL Activado
-app.config['MAIL_DEFAULT_SENDER'] = ('Orbe System', app.config['MAIL_USERNAME'])
-# Timeout para evitar que se cuelgue si Google no responde
-app.config['MAIL_ASCII_ATTACHMENTS'] = False
+# --- CONFIGURACIÓN DE EMAIL (MAILJET - LA DEFINITIVA) ---
+app.config['MAIL_SERVER'] = 'in-v3.mailjet.com'  # Servidor de Mailjet
+app.config['MAIL_PORT'] = 587
+# Pon aquí tu API KEY de Mailjet
+app.config['MAIL_USERNAME'] = '4481322aa738103dc281bd84f53b303a' 
+# Pon aquí tu SECRET KEY de Mailjet
+app.config['MAIL_PASSWORD'] = 'a8837ceb1c5d88714bf27b27f5d0673b'
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USE_SSL'] = False
+# DEBE SER EL CORREO QUE REGISTRASTE EN MAILJET
+app.config['MAIL_DEFAULT_SENDER'] = ('Orbe System', 'equipozynetra@gmail.com')
 
 db = SQLAlchemy(app)
 mail = flask_mail.Mail(app)
@@ -45,7 +45,6 @@ TIERS = {
     'owner':   {'limit': 999999, 'name': 'DUEÑO',   'color': '#ffffff', 'price': 0}
 }
 
-# --- MODELOS ---
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     alias = db.Column(db.String(50), nullable=False)
@@ -76,7 +75,6 @@ class Changelog(db.Model):
     description = db.Column(db.String(200), nullable=False)
     date = db.Column(db.DateTime, default=datetime.utcnow)
 
-# --- TRACKING ---
 @app.before_request
 def update_last_active():
     if 'user_id' in session:
@@ -89,24 +87,17 @@ def update_last_active():
                 session.pop('user_id', None)
         except: pass
 
-# --- SISTEMA DE EMAIL ASÍNCRONO (MEJORADO) ---
 def send_async_email(app_context, msg):
-    """Envía el correo en un hilo separado para no bloquear la web."""
     with app_context:
         try:
             mail.send(msg)
-            print(f"--- [GMAIL ÉXITO] Correo enviado a: {msg.recipients[0]} ---")
+            print("--- [EMAIL] Enviado con Mailjet ---")
         except Exception as e:
-            # Aquí capturamos si Google bloquea el intento
-            print(f"--- [GMAIL ERROR] Falló el envío: {e} ---")
+            print(f"--- [EMAIL ERROR] {e} ---")
 
 def send_email(to, subject, template_name, **kwargs):
     try:
-        print(f"--- [GMAIL INIT] Preparando envío a {to} ---")
-        
-        # Codificación segura del asunto
         safe_subject = Header(subject, 'utf-8').encode()
-        
         msg = flask_mail.Message(
             subject=safe_subject,
             recipients=[to],
@@ -116,19 +107,14 @@ def send_email(to, subject, template_name, **kwargs):
         msg.html = render_template(f'emails/{template_name}.html', **kwargs)
         msg.charset = 'utf-8'
         
-        # Capturamos el contexto actual de Flask
         app_context = app.app_context()
-        
-        # Lanzamos el cohete (Hilo)
         thr = threading.Thread(target=send_async_email, args=[app_context, msg])
         thr.start()
-        
-        return True # Retornamos True inmediatamente para que la web siga
+        return True
     except Exception as e:
-        print(f"--- [GMAIL CRITICAL] Error al crear hilo: {e} ---")
+        print(f"--- [EMAIL CRITICAL] {e} ---")
         return False
 
-# --- RUTAS ---
 @app.route('/')
 def home(): return render_template('index.html')
 
@@ -140,17 +126,10 @@ def auth():
         user = User.query.filter_by(email=email).first()
         
         if user and check_password_hash(user.password_hash, password):
-            # VERIFICACIÓN ESTRICTA
             if not user.is_verified:
-                flash('Cuenta no verificada. Revisa tu correo (y SPAM).', 'error')
-                return render_template('auth.html')
-            
+                flash('Acceso Denegado: Revisa tu correo (Spam incluido).', 'error'); return render_template('auth.html')
             session['user_id'] = user.id; session['user_name'] = user.alias
-            
-            # Alerta login (excepto dueño)
-            if user.plan != 'owner':
-                send_email(user.email, 'ORBE - Nueva Conexión', 'login_alert', user=user.alias)
-            
+            if user.plan != 'owner': send_email(user.email, 'ORBE - Nueva Conexión', 'login_alert', user=user.alias)
             return redirect(url_for('dashboard'))
         else: flash('Credenciales incorrectas.', 'error')
     return render_template('auth.html')
@@ -160,48 +139,35 @@ def register():
     if request.method == 'POST':
         if request.form.get('captcha_solved') != 'true': flash('Captcha incorrecto.', 'error'); return redirect(url_for('register'))
         alias = request.form.get('alias').strip(); email = request.form.get('email').strip().lower(); password = request.form.get('password')
-        
         if password != request.form.get('confirm_password'): flash('Passwords no coinciden.', 'error'); return redirect(url_for('register'))
         if User.query.filter_by(email=email).first(): flash('Email en uso.', 'error'); return redirect(url_for('register'))
         
-        # Configuración inicial del usuario
-        target_plan = 'free'
-        is_verified_status = False # Obligatorio verificar
-        
-        # Backdoor para el dueño
-        if email == 'equipozynetra@gmail.com': 
-            target_plan = 'owner'; is_verified_status = True
+        target_plan = 'free'; is_verified_status = False
+        if email == 'equipozynetra@gmail.com': target_plan = 'owner'; is_verified_status = True
 
         new_user = User(alias=alias, email=email, password_hash=generate_password_hash(password, method='pbkdf2:sha256'), plan=target_plan, is_verified=is_verified_status)
         db.session.add(new_user); db.session.commit()
         
-        if target_plan == 'owner': 
-            flash('Bienvenido Creador.', 'success'); return redirect(url_for('auth'))
+        if target_plan == 'owner': flash('Bienvenido Creador.', 'success'); return redirect(url_for('auth'))
         
-        # Generar Token y Enviar Correo
         token = s.dumps(email, salt='email-confirm')
         link = url_for('confirm_email', token=token, _external=True)
-        
-        # Intentar envío
         send_email(email, 'ORBE - Verificar Cuenta', 'verify_email', user=alias, link=link)
         
-        flash('Registro exitoso. Hemos enviado un correo de verificación.', 'success')
-        return redirect(url_for('auth'))
+        flash('Registro exitoso. Revisa tu email (incluso Spam).', 'success'); return redirect(url_for('auth'))
     return render_template('register.html')
 
 @app.route('/confirm_email/<token>')
 def confirm_email(token):
     try: email = s.loads(token, salt='email-confirm', max_age=300)
-    except: return "<h1>Token inválido o expirado</h1>"
-    
+    except: return "Token inválido"
     user = User.query.filter_by(email=email).first_or_404()
-    if not user.is_verified: user.is_verified = True; db.session.add(user); db.session.commit(); flash('Verificado. Puedes entrar.', 'success')
+    if not user.is_verified: user.is_verified = True; db.session.add(user); db.session.commit(); flash('Verificado.', 'success')
     return redirect(url_for('auth'))
 
 @app.route('/logout')
 def logout(): session.pop('user_id', None); return redirect(url_for('home'))
 
-# --- APP ---
 @app.route('/dashboard')
 def dashboard():
     if 'user_id' not in session: return redirect(url_for('auth'))
@@ -274,7 +240,6 @@ def admin_panel():
         target_user = User.query.filter_by(email=target_email).first()
         if target_user: target_user.plan = new_plan; db.session.commit(); flash(f'Usuario actualizado', 'success')
         else: flash('Usuario no encontrado', 'error')
-    
     all_users = User.query.all()
     return render_template('admin.html', user=current_user, all_users=all_users, now=datetime.utcnow(), timedelta=timedelta)
 
@@ -289,7 +254,6 @@ def reset_db_danger():
     flash('♻ BASE DE DATOS REINICIADA.', 'success')
     return redirect(url_for('admin_panel'))
 
-# --- INIT ---
 with app.app_context():
     try:
         db.create_all()
