@@ -6,7 +6,6 @@ from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadTimeSignat
 from email.header import Header
 from datetime import datetime, timedelta
 import random 
-import threading 
 from whitenoise import WhiteNoise
 import os
 
@@ -18,22 +17,23 @@ app.config['SECRET_KEY'] = 'orbe_core_system_key_v1'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///orbe.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# --- CONFIGURACIÓN DE EMAIL (PUERTO 465 SSL) ---
-# Cambiamos a SSL/465 para evitar el bloqueo de Render
+# --- CONFIGURACIÓN DE EMAIL (ESTÁNDAR BREVO 587) ---
 app.config['MAIL_SERVER'] = 'smtp-relay.brevo.com'
-app.config['MAIL_PORT'] = 465  # <--- CAMBIO CLAVE
+app.config['MAIL_PORT'] = 587
 app.config['MAIL_USERNAME'] = 'equipozynetra@gmail.com' 
-# Pongo la clave directa para asegurar que funcione. Si GitHub falla, borrala y usa os.environ
-app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
-app.config['MAIL_USE_TLS'] = False # <--- CAMBIO
-app.config['MAIL_USE_SSL'] = True  # <--- CAMBIO: SSL ACTIVADO
+# Lee la contraseña de Render
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD') 
+app.config['MAIL_USE_TLS'] = True  # Brevo usa TLS en el puerto 587
+app.config['MAIL_USE_SSL'] = False
 app.config['MAIL_DEFAULT_SENDER'] = ('Orbe System', app.config['MAIL_USERNAME'])
+# Habilitar depuración para ver errores en los logs de Render
+app.config['MAIL_DEBUG'] = True 
 
 db = SQLAlchemy(app)
 mail = flask_mail.Mail(app)
 s = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 
-# --- SISTEMA DE NIVELES ---
+# --- TIERS ---
 TIERS = {
     'free':  {'limit': 3,      'name': 'FREE',  'color': '#888888', 'price': 0},
     'gold':  {'limit': 10,     'name': 'GOLD',  'color': '#ffd700', 'price': 9},
@@ -88,17 +88,10 @@ def update_last_active():
                 session.pop('user_id', None)
         except: pass
 
-# --- EMAIL ASÍNCRONO ---
-def send_async_email(app_context, msg):
-    with app_context:
-        try:
-            mail.send(msg)
-            print("--- [EMAIL] Enviado exitosamente (Port 465) ---")
-        except Exception as e:
-            print(f"--- [EMAIL ERROR] Falló el envío: {e} ---")
-
+# --- FUNCIÓN EMAIL SÍNCRONA (DIRECTA) ---
 def send_email(to, subject, template_name, **kwargs):
     try:
+        print(f"--- INTENTANDO ENVIAR A: {to} ---")
         safe_subject = Header(subject, 'utf-8').encode()
         msg = flask_mail.Message(
             subject=safe_subject,
@@ -109,12 +102,12 @@ def send_email(to, subject, template_name, **kwargs):
         msg.html = render_template(f'emails/{template_name}.html', **kwargs)
         msg.charset = 'utf-8'
         
-        app_context = app.app_context()
-        thr = threading.Thread(target=send_async_email, args=[app_context, msg])
-        thr.start()
+        # ENVÍO DIRECTO: Si falla aquí, saldrá el error en Render
+        mail.send(msg)
+        print("--- CORREO ENVIADO CORRECTAMENTE ---")
         return True
     except Exception as e:
-        print(f"--- [EMAIL CRITICAL] {e} ---")
+        print(f"--- ERROR CRÍTICO EMAIL: {e} ---")
         return False
 
 # --- RUTAS ---
@@ -130,9 +123,15 @@ def auth():
         
         if user and check_password_hash(user.password_hash, password):
             if not user.is_verified:
-                flash('Acceso Denegado: Revise su correo para verificar.', 'error'); return render_template('auth.html')
+                flash('Cuenta no verificada. Revisa tu correo (Spam incluido).', 'error')
+                return render_template('auth.html')
+            
             session['user_id'] = user.id; session['user_name'] = user.alias
-            if user.plan != 'owner': send_email(user.email, 'ORBE - Nueva Conexión', 'login_alert', user=user.alias)
+            
+            # Alerta login (excepto dueño)
+            if user.plan != 'owner':
+                send_email(user.email, 'ORBE - Nueva Conexión', 'login_alert', user=user.alias)
+            
             return redirect(url_for('dashboard'))
         else: flash('Credenciales incorrectas.', 'error')
     return render_template('auth.html')
@@ -140,12 +139,19 @@ def auth():
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        if request.form.get('captcha_solved') != 'true': flash('Captcha incorrecto.', 'error'); return redirect(url_for('register'))
-        alias = request.form.get('alias').strip(); email = request.form.get('email').strip().lower(); password = request.form.get('password')
+        if request.form.get('captcha_solved') != 'true': 
+            flash('Completa el puzzle.', 'error'); return redirect(url_for('register'))
         
-        if password != request.form.get('confirm_password'): flash('Passwords no coinciden.', 'error'); return redirect(url_for('register'))
-        if User.query.filter_by(email=email).first(): flash('Email en uso.', 'error'); return redirect(url_for('register'))
+        alias = request.form.get('alias').strip()
+        email = request.form.get('email').strip().lower()
+        password = request.form.get('password')
         
+        if password != request.form.get('confirm_password'): 
+            flash('Passwords no coinciden.', 'error'); return redirect(url_for('register'))
+        if User.query.filter_by(email=email).first(): 
+            flash('Email en uso.', 'error'); return redirect(url_for('register'))
+        
+        # Dueño Auto-Verificado
         target_plan = 'free'; is_verified_status = False
         if email == 'equipozynetra@gmail.com': target_plan = 'owner'; is_verified_status = True
 
@@ -155,11 +161,18 @@ def register():
         if target_plan == 'owner': 
             flash('Bienvenido Creador.', 'success'); return redirect(url_for('auth'))
         
+        # Envío de correo
         token = s.dumps(email, salt='email-confirm')
         link = url_for('confirm_email', token=token, _external=True)
-        send_email(email, 'ORBE - Verificar Cuenta', 'verify_email', user=alias, link=link)
         
-        flash('Registro exitoso. Verifique su email.', 'success'); return redirect(url_for('auth'))
+        email_status = send_email(email, 'ORBE - Verificar Cuenta', 'verify_email', user=alias, link=link)
+        
+        if email_status:
+            flash('Registro exitoso. Correo de verificación enviado.', 'success')
+        else:
+            flash('Error enviando correo. Contacta a soporte.', 'error')
+            
+        return redirect(url_for('auth'))
     return render_template('register.html')
 
 @app.route('/confirm_email/<token>')
@@ -167,12 +180,14 @@ def confirm_email(token):
     try: email = s.loads(token, salt='email-confirm', max_age=300)
     except: return "Token inválido"
     user = User.query.filter_by(email=email).first_or_404()
-    if not user.is_verified: user.is_verified = True; db.session.add(user); db.session.commit(); flash('Verificado.', 'success')
+    if not user.is_verified: user.is_verified = True; db.session.add(user); db.session.commit()
+    flash('Verificado. Puedes entrar.', 'success')
     return redirect(url_for('auth'))
 
 @app.route('/logout')
 def logout(): session.pop('user_id', None); return redirect(url_for('home'))
 
+# --- APP ---
 @app.route('/dashboard')
 def dashboard():
     if 'user_id' not in session: return redirect(url_for('auth'))
@@ -227,8 +242,7 @@ def process_payment():
         user = User.query.get(session['user_id'])
         user.plan = plan_name; db.session.commit()
         price = TIERS[plan_name]['price']
-        date_str = datetime.now().strftime("%d/%m/%Y %H:%M")
-        send_email(user.email, f'Recibo Orbe: Plan {plan_name.upper()}', 'receipt', user=user.alias, plan=plan_name, price=price, date=date_str, order_id=order_id)
+        send_email(user.email, f'Recibo Orbe: Plan {plan_name.upper()}', 'receipt', user=user.alias, plan=plan_name, price=price, date=datetime.now().strftime("%d/%m/%Y"), order_id=order_id)
         return jsonify({'success': True})
     return jsonify({'error': 'Invalid'}), 400
 
