@@ -6,34 +6,35 @@ from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadTimeSignat
 from email.header import Header
 from datetime import datetime, timedelta
 import random 
+import threading # CRÍTICO: Para envío en segundo plano
 from whitenoise import WhiteNoise
 import os
 
 # --- CONFIGURACIÓN DEL SISTEMA ---
 app = Flask(__name__)
-app.wsgi_app = WhiteNoise(app.wsgi_app, root='static/')
+app.wsgi_app = WhiteNoise(app.wsgi_app, root='static/') # Fix para Render
 
 app.config['SECRET_KEY'] = 'orbe_core_system_key_v1'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///orbe.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# --- CONFIGURACIÓN DE EMAIL (ESTÁNDAR BREVO 587) ---
-app.config['MAIL_SERVER'] = 'smtp-relay.brevo.com'
-app.config['MAIL_PORT'] = 587
+# --- CONFIGURACIÓN DE EMAIL (GMAIL BLINDADO) ---
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 465 # Puerto SSL Seguro (Menos bloqueos)
 app.config['MAIL_USERNAME'] = 'equipozynetra@gmail.com' 
-# Lee la contraseña de Render
+# IMPORTANTE: Asegúrate de que esta variable esté en Render
 app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD') 
-app.config['MAIL_USE_TLS'] = True  # Brevo usa TLS en el puerto 587
-app.config['MAIL_USE_SSL'] = False
+app.config['MAIL_USE_TLS'] = False
+app.config['MAIL_USE_SSL'] = True # SSL Activado
 app.config['MAIL_DEFAULT_SENDER'] = ('Orbe System', app.config['MAIL_USERNAME'])
-# Habilitar depuración para ver errores en los logs de Render
-app.config['MAIL_DEBUG'] = True 
+# Timeout para evitar que se cuelgue si Google no responde
+app.config['MAIL_ASCII_ATTACHMENTS'] = False
 
 db = SQLAlchemy(app)
 mail = flask_mail.Mail(app)
 s = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 
-# --- TIERS ---
+# --- SISTEMA DE NIVELES ---
 TIERS = {
     'free':  {'limit': 3,      'name': 'FREE',  'color': '#888888', 'price': 0},
     'gold':  {'limit': 10,     'name': 'GOLD',  'color': '#ffd700', 'price': 9},
@@ -88,11 +89,24 @@ def update_last_active():
                 session.pop('user_id', None)
         except: pass
 
-# --- FUNCIÓN EMAIL SÍNCRONA (DIRECTA) ---
+# --- SISTEMA DE EMAIL ASÍNCRONO (MEJORADO) ---
+def send_async_email(app_context, msg):
+    """Envía el correo en un hilo separado para no bloquear la web."""
+    with app_context:
+        try:
+            mail.send(msg)
+            print(f"--- [GMAIL ÉXITO] Correo enviado a: {msg.recipients[0]} ---")
+        except Exception as e:
+            # Aquí capturamos si Google bloquea el intento
+            print(f"--- [GMAIL ERROR] Falló el envío: {e} ---")
+
 def send_email(to, subject, template_name, **kwargs):
     try:
-        print(f"--- INTENTANDO ENVIAR A: {to} ---")
+        print(f"--- [GMAIL INIT] Preparando envío a {to} ---")
+        
+        # Codificación segura del asunto
         safe_subject = Header(subject, 'utf-8').encode()
+        
         msg = flask_mail.Message(
             subject=safe_subject,
             recipients=[to],
@@ -102,12 +116,16 @@ def send_email(to, subject, template_name, **kwargs):
         msg.html = render_template(f'emails/{template_name}.html', **kwargs)
         msg.charset = 'utf-8'
         
-        # ENVÍO DIRECTO: Si falla aquí, saldrá el error en Render
-        mail.send(msg)
-        print("--- CORREO ENVIADO CORRECTAMENTE ---")
-        return True
+        # Capturamos el contexto actual de Flask
+        app_context = app.app_context()
+        
+        # Lanzamos el cohete (Hilo)
+        thr = threading.Thread(target=send_async_email, args=[app_context, msg])
+        thr.start()
+        
+        return True # Retornamos True inmediatamente para que la web siga
     except Exception as e:
-        print(f"--- ERROR CRÍTICO EMAIL: {e} ---")
+        print(f"--- [GMAIL CRITICAL] Error al crear hilo: {e} ---")
         return False
 
 # --- RUTAS ---
@@ -122,8 +140,9 @@ def auth():
         user = User.query.filter_by(email=email).first()
         
         if user and check_password_hash(user.password_hash, password):
+            # VERIFICACIÓN ESTRICTA
             if not user.is_verified:
-                flash('Cuenta no verificada. Revisa tu correo (Spam incluido).', 'error')
+                flash('Cuenta no verificada. Revisa tu correo (y SPAM).', 'error')
                 return render_template('auth.html')
             
             session['user_id'] = user.id; session['user_name'] = user.alias
@@ -139,21 +158,19 @@ def auth():
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        if request.form.get('captcha_solved') != 'true': 
-            flash('Completa el puzzle.', 'error'); return redirect(url_for('register'))
+        if request.form.get('captcha_solved') != 'true': flash('Captcha incorrecto.', 'error'); return redirect(url_for('register'))
+        alias = request.form.get('alias').strip(); email = request.form.get('email').strip().lower(); password = request.form.get('password')
         
-        alias = request.form.get('alias').strip()
-        email = request.form.get('email').strip().lower()
-        password = request.form.get('password')
+        if password != request.form.get('confirm_password'): flash('Passwords no coinciden.', 'error'); return redirect(url_for('register'))
+        if User.query.filter_by(email=email).first(): flash('Email en uso.', 'error'); return redirect(url_for('register'))
         
-        if password != request.form.get('confirm_password'): 
-            flash('Passwords no coinciden.', 'error'); return redirect(url_for('register'))
-        if User.query.filter_by(email=email).first(): 
-            flash('Email en uso.', 'error'); return redirect(url_for('register'))
+        # Configuración inicial del usuario
+        target_plan = 'free'
+        is_verified_status = False # Obligatorio verificar
         
-        # Dueño Auto-Verificado
-        target_plan = 'free'; is_verified_status = False
-        if email == 'equipozynetra@gmail.com': target_plan = 'owner'; is_verified_status = True
+        # Backdoor para el dueño
+        if email == 'equipozynetra@gmail.com': 
+            target_plan = 'owner'; is_verified_status = True
 
         new_user = User(alias=alias, email=email, password_hash=generate_password_hash(password, method='pbkdf2:sha256'), plan=target_plan, is_verified=is_verified_status)
         db.session.add(new_user); db.session.commit()
@@ -161,27 +178,24 @@ def register():
         if target_plan == 'owner': 
             flash('Bienvenido Creador.', 'success'); return redirect(url_for('auth'))
         
-        # Envío de correo
+        # Generar Token y Enviar Correo
         token = s.dumps(email, salt='email-confirm')
         link = url_for('confirm_email', token=token, _external=True)
         
-        email_status = send_email(email, 'ORBE - Verificar Cuenta', 'verify_email', user=alias, link=link)
+        # Intentar envío
+        send_email(email, 'ORBE - Verificar Cuenta', 'verify_email', user=alias, link=link)
         
-        if email_status:
-            flash('Registro exitoso. Correo de verificación enviado.', 'success')
-        else:
-            flash('Error enviando correo. Contacta a soporte.', 'error')
-            
+        flash('Registro exitoso. Hemos enviado un correo de verificación.', 'success')
         return redirect(url_for('auth'))
     return render_template('register.html')
 
 @app.route('/confirm_email/<token>')
 def confirm_email(token):
     try: email = s.loads(token, salt='email-confirm', max_age=300)
-    except: return "Token inválido"
+    except: return "<h1>Token inválido o expirado</h1>"
+    
     user = User.query.filter_by(email=email).first_or_404()
-    if not user.is_verified: user.is_verified = True; db.session.add(user); db.session.commit()
-    flash('Verificado. Puedes entrar.', 'success')
+    if not user.is_verified: user.is_verified = True; db.session.add(user); db.session.commit(); flash('Verificado. Puedes entrar.', 'success')
     return redirect(url_for('auth'))
 
 @app.route('/logout')
