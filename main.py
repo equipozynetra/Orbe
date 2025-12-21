@@ -18,14 +18,15 @@ app.config['SECRET_KEY'] = 'orbe_core_system_key_v1'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///orbe.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# --- CONFIGURACIÓN DE EMAIL (SEGURA) ---
+# --- CONFIGURACIÓN DE EMAIL (PUERTO 465 SSL) ---
+# Cambiamos a SSL/465 para evitar el bloqueo de Render
 app.config['MAIL_SERVER'] = 'smtp-relay.brevo.com'
-app.config['MAIL_PORT'] = 587
+app.config['MAIL_PORT'] = 465  # <--- CAMBIO CLAVE
 app.config['MAIL_USERNAME'] = 'equipozynetra@gmail.com' 
-# IMPORTANTE: Esto le dice a la app "Busca la contraseña en la configuración de Render"
-app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD') 
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USE_SSL'] = False
+# Pongo la clave directa para asegurar que funcione. Si GitHub falla, borrala y usa os.environ
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
+app.config['MAIL_USE_TLS'] = False # <--- CAMBIO
+app.config['MAIL_USE_SSL'] = True  # <--- CAMBIO: SSL ACTIVADO
 app.config['MAIL_DEFAULT_SENDER'] = ('Orbe System', app.config['MAIL_USERNAME'])
 
 db = SQLAlchemy(app)
@@ -85,17 +86,16 @@ def update_last_active():
                 db.session.commit()
             else:
                 session.pop('user_id', None)
-        except:
-            pass
+        except: pass
 
 # --- EMAIL ASÍNCRONO ---
 def send_async_email(app_context, msg):
     with app_context:
         try:
             mail.send(msg)
-            print("--- [EMAIL] Enviado (Brevo) ---")
+            print("--- [EMAIL] Enviado exitosamente (Port 465) ---")
         except Exception as e:
-            print(f"--- [EMAIL ERROR] {e} ---")
+            print(f"--- [EMAIL ERROR] Falló el envío: {e} ---")
 
 def send_email(to, subject, template_name, **kwargs):
     try:
@@ -114,7 +114,7 @@ def send_email(to, subject, template_name, **kwargs):
         thr.start()
         return True
     except Exception as e:
-        print(f"--- [EMAIL ERROR INIT] {e} ---")
+        print(f"--- [EMAIL CRITICAL] {e} ---")
         return False
 
 # --- RUTAS ---
@@ -142,6 +142,7 @@ def register():
     if request.method == 'POST':
         if request.form.get('captcha_solved') != 'true': flash('Captcha incorrecto.', 'error'); return redirect(url_for('register'))
         alias = request.form.get('alias').strip(); email = request.form.get('email').strip().lower(); password = request.form.get('password')
+        
         if password != request.form.get('confirm_password'): flash('Passwords no coinciden.', 'error'); return redirect(url_for('register'))
         if User.query.filter_by(email=email).first(): flash('Email en uso.', 'error'); return redirect(url_for('register'))
         
@@ -157,6 +158,7 @@ def register():
         token = s.dumps(email, salt='email-confirm')
         link = url_for('confirm_email', token=token, _external=True)
         send_email(email, 'ORBE - Verificar Cuenta', 'verify_email', user=alias, link=link)
+        
         flash('Registro exitoso. Verifique su email.', 'success'); return redirect(url_for('auth'))
     return render_template('register.html')
 
@@ -225,7 +227,8 @@ def process_payment():
         user = User.query.get(session['user_id'])
         user.plan = plan_name; db.session.commit()
         price = TIERS[plan_name]['price']
-        send_email(user.email, f'Recibo Orbe: Plan {plan_name.upper()}', 'receipt', user=user.alias, plan=plan_name, price=price, date=datetime.now().strftime("%d/%m/%Y"), order_id=order_id)
+        date_str = datetime.now().strftime("%d/%m/%Y %H:%M")
+        send_email(user.email, f'Recibo Orbe: Plan {plan_name.upper()}', 'receipt', user=user.alias, plan=plan_name, price=price, date=date_str, order_id=order_id)
         return jsonify({'success': True})
     return jsonify({'error': 'Invalid'}), 400
 
