@@ -18,15 +18,15 @@ app.config['SECRET_KEY'] = 'orbe_core_system_key_v1'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///orbe.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# --- CONFIGURACIÓN DE EMAIL (GMAIL VALIDADO) ---
+# --- CONFIGURACIÓN DE EMAIL (GMAIL SSL 465 - LA QUE FUNCIONA EN RENDER) ---
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 465 # Puerto SSL (Validado)
+app.config['MAIL_PORT'] = 465  # <--- CAMBIO CLAVE: Puerto SSL
 app.config['MAIL_USERNAME'] = 'equipozynetra@gmail.com' 
 app.config['MAIL_PASSWORD'] = 'klttyzyvuqvfcsai' 
-app.config['MAIL_USE_TLS'] = False
-app.config['MAIL_USE_SSL'] = True
+app.config['MAIL_USE_TLS'] = False # <--- CAMBIO: Apagar TLS
+app.config['MAIL_USE_SSL'] = True  # <--- CAMBIO: Encender SSL (Más estable)
 app.config['MAIL_DEFAULT_SENDER'] = ('Orbe System', app.config['MAIL_USERNAME'])
-app.config['MAIL_DEBUG'] = True 
+app.config['MAIL_DEBUG'] = False 
 
 db = SQLAlchemy(app)
 mail = flask_mail.Mail(app)
@@ -86,31 +86,30 @@ def update_last_active():
             else: session.pop('user_id', None)
         except: pass
 
-# --- FUNCIÓN EMAIL MEJORADA ---
+# --- FUNCIÓN EMAIL ASÍNCRONA ---
 def send_async_email(app_context, msg):
     with app_context:
         try:
             mail.send(msg)
-            print(f"--- [EMAIL SENT] Enviado a {msg.recipients[0]} ---")
+            print(f"--- [EMAIL SENT] Enviado a {msg.recipients} ---")
         except Exception as e:
-            print(f"--- [EMAIL ERROR] Falló el envío: {e} ---")
+            print(f"--- [EMAIL ERROR] {e} ---")
 
 def send_email(to, subject, body_html):
     try:
-        print(f"--- PREPARANDO EMAIL PARA {to} ---")
-        safe_subject = Header(subject, 'utf-8').encode()
+        # Preparamos el mensaje
         msg = flask_mail.Message(
-            subject=safe_subject,
+            subject=subject,
             recipients=[to],
+            html=body_html,
             sender=app.config['MAIL_DEFAULT_SENDER']
         )
-        msg.html = body_html
-        msg.charset = 'utf-8'
         
-        # Enviar en segundo plano
+        # HILO: Esto hace que la web NO se quede cargando
         app_context = app.app_context()
         thr = threading.Thread(target=send_async_email, args=[app_context, msg])
         thr.start()
+        
         return True
     except Exception as e:
         print(f"--- [EMAIL CRITICAL] Error: {e} ---")
@@ -134,8 +133,6 @@ def auth():
                 user.otp_code = otp
                 user.otp_expiry = datetime.utcnow() + timedelta(minutes=5)
                 db.session.commit()
-                
-                print(f"\n >>> CÓDIGO OTP (BACKUP): {otp} <<<\n")
                 
                 html = f"<h1>Código ORBE</h1><h2>{otp}</h2>"
                 send_email(email, 'Tu Código de Acceso', html)
@@ -175,12 +172,7 @@ def register():
         
         session['temp_email'] = email
         
-        # --- PLAN B: IMPRIMIR CÓDIGO EN LOGS ---
-        print(f"\n==========================================")
-        print(f" CÓDIGO OTP PARA {email}: {otp}")
-        print(f"==========================================\n")
-        
-        # Enviar Email Real
+        # Enviar Email
         html_body = f"""
         <div style="background-color: #f9f9f9; padding: 30px; font-family: sans-serif;">
             <h1 style="color: #00ff9d;">SISTEMA ORBE</h1>
@@ -191,6 +183,7 @@ def register():
         """
         send_email(email, 'ORBE - Activa tu cuenta', html_body)
         
+        # REDIRECCIÓN INMEDIATA (El correo va por detrás)
         return redirect(url_for('verify_otp'))
     return render_template('register.html')
 
@@ -272,11 +265,9 @@ def process_payment():
         user = User.query.get(session['user_id'])
         user.plan = plan_name; db.session.commit()
         price = TIERS[plan_name]['price']
-        date_str = datetime.now().strftime("%d/%m/%Y %H:%M")
         
-        # Recibo
-        html = f"<h1>Recibo Orbe</h1><p>Plan: {plan_name}</p><p>Precio: {price}€</p><p>Ref: {order_id}</p>"
-        send_email(user.email, f'Confirmación Plan {plan_name.upper()}', html)
+        html_receipt = f"<h1>Recibo Orbe</h1><p>Plan: {plan_name.upper()}</p><p>Precio: {price}€</p><p>ID: {order_id}</p>"
+        send_email(user.email, f'Confirmación Plan {plan_name.upper()}', html_receipt)
         
         return jsonify({'success': True})
     return jsonify({'error': 'Invalid'}), 400
