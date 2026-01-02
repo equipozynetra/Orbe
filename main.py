@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_mail import Mail, Message  # Importación estándar corregida
+import flask_mail # Importamos el módulo completo para evitar conflictos con el modelo Message
 from itsdangerous import URLSafeTimedSerializer
 from datetime import datetime, timedelta
 import random 
@@ -24,11 +24,12 @@ app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USE_SSL'] = False
 app.config['MAIL_USERNAME'] = 'equipozynetra@gmail.com' 
 app.config['MAIL_PASSWORD'] = 'klttyzyvuqvfcsai' 
+# El remitente debe ser el mismo correo de Gmail
 app.config['MAIL_DEFAULT_SENDER'] = ('Orbe System', 'equipozynetra@gmail.com')
 app.config['MAIL_DEBUG'] = True 
 
 db = SQLAlchemy(app)
-mail = Mail(app)
+mail = flask_mail.Mail(app)
 s = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 
 # --- TIERS ---
@@ -62,7 +63,7 @@ class Chat(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     messages = db.relationship('Message', backref='chat_parent', lazy=True, cascade="all, delete")
 
-class Message(db.Model):
+class Message(db.Model): # Esta clase causaba el conflicto
     id = db.Column(db.Integer, primary_key=True)
     chat_id = db.Column(db.Integer, db.ForeignKey('chat.id'), nullable=False)
     sender = db.Column(db.String(10), nullable=False) 
@@ -76,30 +77,31 @@ class Changelog(db.Model):
     date = db.Column(db.DateTime, default=datetime.utcnow)
 
 # --- SISTEMA DE CORREO MEJORADO ---
-def send_async_email(app, msg):
-    """Envía el correo dentro del contexto de la aplicación."""
-    with app.app_context():
+def send_async_email(app_context, msg):
+    """Envía el correo usando el contexto de la aplicación."""
+    with app_context:
         try:
             mail.send(msg)
-            print(f"--- [EMAIL] Enviado a {msg.recipients} ---")
+            print(f"--- [SUCCESS] Correo enviado a {msg.recipients} ---")
         except Exception as e:
-            print(f"--- [EMAIL ERROR] {e} ---")
+            print(f"--- [SMTP ERROR] {e} ---")
 
 def send_email(to, subject, body_html):
-    """Crea el mensaje y lanza el hilo asíncrono."""
+    """Crea el mensaje usando flask_mail.Message para evitar conflictos."""
     try:
-        msg = Message(
+        # Usamos la referencia completa al módulo para evitar el choque con el modelo Message
+        msg = flask_mail.Message(
             subject=subject,
             recipients=[to],
             html=body_html,
             sender=app.config['MAIL_DEFAULT_SENDER']
         )
-        # Lanzar hilo para no bloquear la app
-        thread = threading.Thread(target=send_async_email, args=(app, msg))
+        # Iniciamos el hilo pasando el contexto de la app
+        thread = threading.Thread(target=send_async_email, args=(app.app_context(), msg))
         thread.start()
         return True
     except Exception as e:
-        print(f"--- [EMAIL CRITICAL] Error al crear hilo: {e} ---")
+        print(f"--- [CRITICAL ERROR] Error al preparar el correo: {e} ---")
         return False
 
 # --- RUTAS ---
@@ -131,11 +133,16 @@ def auth():
                 user.otp_expiry = datetime.utcnow() + timedelta(minutes=5)
                 db.session.commit()
                 
-                html_body = f"<div style='font-family:sans-serif;'><h1>Código ORBE</h1><p>Tu código es: <b>{otp}</b></p></div>"
-                send_email(email, 'Tu Código de Acceso', html_body)
+                html_body = f"""
+                <div style="font-family: Arial; padding: 20px; color: #333;">
+                    <h2>Verificación de acceso</h2>
+                    <p>Tu código de seguridad es: <strong style="font-size: 24px;">{otp}</strong></p>
+                </div>
+                """
+                send_email(email, 'Tu Código de Acceso - ORBE', html_body)
                 
                 session['temp_email'] = email
-                flash('Cuenta no verificada. Hemos enviado un nuevo código.', 'error')
+                flash('Verifica tu correo para continuar.', 'error')
                 return redirect(url_for('verify_otp'))
             
             session['user_id'] = user.id; session['user_name'] = user.alias
@@ -146,61 +153,44 @@ def auth():
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        if request.form.get('captcha_solved') != 'true': 
-            flash('Captcha incorrecto.', 'error')
-            return redirect(url_for('register'))
+        if request.form.get('captcha_solved') != 'true': flash('Captcha incorrecto.', 'error'); return redirect(url_for('register'))
         
         alias = request.form.get('alias').strip()
         email = request.form.get('email').strip().lower()
         password = request.form.get('password')
         
-        if password != request.form.get('confirm_password'): 
-            flash('Las contraseñas no coinciden.', 'error')
-            return redirect(url_for('register'))
-            
-        if User.query.filter_by(email=email).first(): 
-            flash('El email ya está en uso.', 'error')
-            return redirect(url_for('register'))
+        if password != request.form.get('confirm_password'): flash('Las contraseñas no coinciden.', 'error'); return redirect(url_for('register'))
+        if User.query.filter_by(email=email).first(): flash('El email ya está en uso.', 'error'); return redirect(url_for('register'))
         
-        target_plan = 'free'
-        is_verified_status = False
-        if email == 'equipozynetra@gmail.com': 
-            target_plan = 'owner'
-            is_verified_status = True
+        target_plan = 'free'; is_verified_status = False
+        if email == 'equipozynetra@gmail.com': target_plan = 'owner'; is_verified_status = True
 
         otp = str(random.randint(100000, 999999))
         expiry = datetime.utcnow() + timedelta(minutes=5)
 
-        new_user = User(
-            alias=alias, 
-            email=email, 
-            password_hash=generate_password_hash(password, method='pbkdf2:sha256'), 
-            plan=target_plan, 
-            is_verified=is_verified_status, 
-            otp_code=otp, 
-            otp_expiry=expiry
-        )
-        db.session.add(new_user)
-        db.session.commit()
+        new_user = User(alias=alias, email=email, password_hash=generate_password_hash(password, method='pbkdf2:sha256'), plan=target_plan, is_verified=is_verified_status, otp_code=otp, otp_expiry=expiry)
+        db.session.add(new_user); db.session.commit()
         
         if target_plan == 'owner': 
-            flash('Bienvenido Creador. Ya puedes iniciar sesión.', 'success')
-            return redirect(url_for('auth'))
+            flash('Bienvenido Creador. Acceso directo concedido.', 'success'); return redirect(url_for('auth'))
         
         session['temp_email'] = email
         
-        # Plantilla de correo profesional
+        # Cuerpo del mensaje optimizado para que no sea SPAM
         html_body = f"""
-        <div style="background:#0a0a0a; color:#ffffff; padding:40px; font-family:sans-serif; text-align:center; border-radius:10px;">
-            <h1 style="color:#00ff9d; margin-bottom:20px;">SISTEMA ORBE</h1>
-            <p style="font-size:16px;">Introduce el siguiente código para verificar tu identidad:</p>
-            <div style="background:#1a1a1a; padding:20px; margin:20px auto; width:fit-content; border:1px solid #00ff9d; border-radius:5px;">
-                <span style="font-size:32px; letter-spacing:10px; font-weight:bold; color:#00ff9d;">{otp}</span>
+        <div style="background-color: #f9f9f9; padding: 30px; font-family: sans-serif;">
+            <div style="max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; border: 1px solid #ddd;">
+                <h1 style="color: #00ff9d; text-align: center;">SISTEMA ORBE</h1>
+                <p>Hola <strong>{alias}</strong>,</p>
+                <p>Para completar tu registro, utiliza el siguiente código de activación:</p>
+                <div style="text-align: center; margin: 30px 0;">
+                    <span style="font-size: 40px; font-weight: bold; letter-spacing: 5px; color: #333;">{otp}</span>
+                </div>
+                <p style="font-size: 12px; color: #777;">Si no has solicitado esta cuenta, puedes ignorar este correo.</p>
             </div>
-            <p style="color:#888; font-size:12px;">Este código expirará en 5 minutos.</p>
         </div>
         """
-        send_email(email, 'ORBE - Código de Verificación', html_body)
+        send_email(email, 'ORBE - Activa tu cuenta', html_body)
         
         return redirect(url_for('verify_otp'))
     return render_template('register.html')
@@ -214,16 +204,12 @@ def verify_otp():
         email = session['temp_email']
         user = User.query.filter_by(email=email).first()
         
-        if not user: 
-            session.pop('temp_email', None)
-            return redirect(url_for('register'))
+        if not user: session.pop('temp_email', None); return redirect(url_for('register'))
             
         if user.otp_code == code and user.otp_expiry > datetime.utcnow():
-            user.is_verified = True
-            user.otp_code = None
-            db.session.commit()
+            user.is_verified = True; user.otp_code = None; db.session.commit()
             session.pop('temp_email', None)
-            flash('Cuenta verificada con éxito.', 'success')
+            flash('¡Cuenta verificada! Ya puedes entrar.', 'success')
             return redirect(url_for('auth'))
         else:
             flash('Código incorrecto o expirado.', 'error')
@@ -231,9 +217,7 @@ def verify_otp():
     return render_template('verify_otp.html')
 
 @app.route('/logout')
-def logout(): 
-    session.clear()
-    return redirect(url_for('home'))
+def logout(): session.clear(); return redirect(url_for('home'))
 
 @app.route('/dashboard')
 def dashboard():
@@ -262,22 +246,17 @@ def new_chat():
     if 'user_id' not in session: return redirect(url_for('auth'))
     user = User.query.get(session['user_id'])
     limit = TIERS.get(user.plan, TIERS['free'])['limit']
-    if Chat.query.filter_by(user_id=user.id).count() >= limit: 
-        flash(f'Límite de chats alcanzado para tu plan.', 'premium_error')
-        return redirect(url_for('chat'))
-    new_chat = Chat(user_id=user.id, title=f"Conversación {Chat.query.filter_by(user_id=user.id).count() + 1}")
-    db.session.add(new_chat); db.session.commit()
-    return redirect(url_for('chat', chat_id=new_chat.id))
+    if Chat.query.filter_by(user_id=user.id).count() >= limit: flash(f'Límite alcanzado.', 'premium_error'); return redirect(url_for('chat'))
+    new_chat_obj = Chat(user_id=user.id, title=f"Conversación {Chat.query.filter_by(user_id=user.id).count() + 1}")
+    db.session.add(new_chat_obj); db.session.commit()
+    return redirect(url_for('chat', chat_id=new_chat_obj.id))
 
 @app.route('/delete_chat/<int:chat_id>')
 def delete_chat(chat_id):
     if 'user_id' not in session: return redirect(url_for('auth'))
     chat_obj = Chat.query.get_or_404(chat_id)
-    if chat_obj.user_id != session['user_id']: 
-        flash('Acceso denegado.', 'error')
-        return redirect(url_for('chat'))
-    db.session.delete(chat_obj)
-    db.session.commit()
+    if chat_obj.user_id != session['user_id']: flash('Acceso denegado.', 'error'); return redirect(url_for('chat'))
+    db.session.delete(chat_obj); db.session.commit()
     return redirect(url_for('chat'))
 
 @app.route('/pricing')
@@ -289,25 +268,20 @@ def pricing():
 @app.route('/api/process_payment', methods=['POST'])
 def process_payment():
     if 'user_id' not in session: return jsonify({'error': 'Unauthorized'}), 401
-    data = request.json
-    plan_name = data.get('plan')
-    order_id = data.get('orderID')
-    
+    data = request.json; plan_name = data.get('plan'); order_id = data.get('orderID')
     if plan_name in ['gold', 'elite', 'omega']:
         user = User.query.get(session['user_id'])
-        user.plan = plan_name
-        db.session.commit()
-        
+        user.plan = plan_name; db.session.commit()
         price = TIERS[plan_name]['price']
-        html_receipt = f"<h1>Recibo Orbe</h1><p>Plan: {plan_name.upper()}</p><p>Precio: {price}€</p><p>ID Transacción: {order_id}</p>"
+        
+        html_receipt = f"<h1>Recibo Orbe</h1><p>Plan: {plan_name.upper()}</p><p>Precio: {price}€</p><p>ID: {order_id}</p>"
         send_email(user.email, f'Recibo Orbe: Plan {plan_name.upper()}', html_receipt)
         
         return jsonify({'success': True})
-    return jsonify({'error': 'Invalid Plan'}), 400
+    return jsonify({'error': 'Invalid'}), 400
 
 @app.route('/api/status')
-def api_status(): 
-    return {'cpu': random.randint(10, 95), 'ram': random.randint(20, 85)}
+def api_status(): return {'cpu': random.randint(10, 95), 'ram': random.randint(20, 85)}
 
 @app.route('/admin_panel', methods=['GET', 'POST'])
 def admin_panel():
@@ -316,15 +290,10 @@ def admin_panel():
     if current_user.plan != 'owner': return redirect(url_for('dashboard'))
     
     if request.method == 'POST':
-        target_email = request.form.get('target_email')
-        new_plan = request.form.get('new_plan')
+        target_email = request.form.get('target_email'); new_plan = request.form.get('new_plan')
         target_user = User.query.filter_by(email=target_email).first()
-        if target_user: 
-            target_user.plan = new_plan
-            db.session.commit()
-            flash(f'Usuario {target_user.alias} actualizado a {new_plan}', 'success')
-        else: 
-            flash('Usuario no encontrado', 'error')
+        if target_user: target_user.plan = new_plan; db.session.commit(); flash(f'Usuario actualizado', 'success')
+        else: flash('Usuario no encontrado', 'error')
     
     all_users = User.query.all()
     return render_template('admin.html', user=current_user, all_users=all_users, now=datetime.utcnow(), timedelta=timedelta)
@@ -334,30 +303,20 @@ def reset_db_danger():
     if 'user_id' not in session: return redirect(url_for('auth'))
     current_user = User.query.get(session['user_id'])
     if current_user.plan != 'owner': return "ACCESO DENEGADO"
-    db.drop_all()
-    db.create_all()
-    owner = User(
-        alias=current_user.alias, 
-        email=current_user.email, 
-        password_hash=current_user.password_hash, 
-        plan='owner', 
-        is_verified=True
-    )
-    db.session.add(owner)
-    db.session.commit()
-    session['user_id'] = owner.id
+    db.drop_all(); db.create_all()
+    owner = User(alias=current_user.alias, email=current_user.email, password_hash=current_user.password_hash, plan='owner', is_verified=True)
+    db.session.add(owner); db.session.commit(); session['user_id'] = owner.id
     flash('♻ BASE DE DATOS REINICIADA.', 'success')
     return redirect(url_for('admin_panel'))
 
-# --- INICIALIZACIÓN ---
+# --- INIT ---
 with app.app_context():
     try:
         db.create_all()
         if not Changelog.query.first():
-            db.session.add(Changelog(version="v1.0.0", description="Lanzamiento Oficial del Sistema"))
+            db.session.add(Changelog(version="v1.0.0", description="Lanzamiento Oficial"))
             db.session.commit()
-    except Exception as e: 
-        print(f"DB Init Error: {e}")
+    except Exception as e: print(f"DB Init Error: {e}")
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
