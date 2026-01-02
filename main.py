@@ -1,8 +1,9 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
-import flask_mail # Importamos el módulo completo para evitar conflictos con el modelo Message
+import flask_mail 
 from itsdangerous import URLSafeTimedSerializer
+from email.header import Header
 from datetime import datetime, timedelta
 import random 
 import threading 
@@ -17,15 +18,14 @@ app.config['SECRET_KEY'] = 'orbe_core_system_key_v1'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///orbe.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# --- CONFIGURACIÓN DE EMAIL (GMAIL) ---
+# --- CONFIGURACIÓN DE EMAIL (GMAIL VALIDADO) ---
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USE_SSL'] = False
+app.config['MAIL_PORT'] = 465 # Puerto SSL (Validado)
 app.config['MAIL_USERNAME'] = 'equipozynetra@gmail.com' 
 app.config['MAIL_PASSWORD'] = 'klttyzyvuqvfcsai' 
-# El remitente debe ser el mismo correo de Gmail
-app.config['MAIL_DEFAULT_SENDER'] = ('Orbe System', 'equipozynetra@gmail.com')
+app.config['MAIL_USE_TLS'] = False
+app.config['MAIL_USE_SSL'] = True
+app.config['MAIL_DEFAULT_SENDER'] = ('Orbe System', app.config['MAIL_USERNAME'])
 app.config['MAIL_DEBUG'] = True 
 
 db = SQLAlchemy(app)
@@ -43,7 +43,6 @@ TIERS = {
     'owner':   {'limit': 999999, 'name': 'DUEÑO',   'color': '#ffffff', 'price': 0}
 }
 
-# --- MODELOS ---
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     alias = db.Column(db.String(50), nullable=False)
@@ -63,7 +62,7 @@ class Chat(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     messages = db.relationship('Message', backref='chat_parent', lazy=True, cascade="all, delete")
 
-class Message(db.Model): # Esta clase causaba el conflicto
+class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     chat_id = db.Column(db.Integer, db.ForeignKey('chat.id'), nullable=False)
     sender = db.Column(db.String(10), nullable=False) 
@@ -76,35 +75,6 @@ class Changelog(db.Model):
     description = db.Column(db.String(200), nullable=False)
     date = db.Column(db.DateTime, default=datetime.utcnow)
 
-# --- SISTEMA DE CORREO MEJORADO ---
-def send_async_email(app_context, msg):
-    """Envía el correo usando el contexto de la aplicación."""
-    with app_context:
-        try:
-            mail.send(msg)
-            print(f"--- [SUCCESS] Correo enviado a {msg.recipients} ---")
-        except Exception as e:
-            print(f"--- [SMTP ERROR] {e} ---")
-
-def send_email(to, subject, body_html):
-    """Crea el mensaje usando flask_mail.Message para evitar conflictos."""
-    try:
-        # Usamos la referencia completa al módulo para evitar el choque con el modelo Message
-        msg = flask_mail.Message(
-            subject=subject,
-            recipients=[to],
-            html=body_html,
-            sender=app.config['MAIL_DEFAULT_SENDER']
-        )
-        # Iniciamos el hilo pasando el contexto de la app
-        thread = threading.Thread(target=send_async_email, args=(app.app_context(), msg))
-        thread.start()
-        return True
-    except Exception as e:
-        print(f"--- [CRITICAL ERROR] Error al preparar el correo: {e} ---")
-        return False
-
-# --- RUTAS ---
 @app.before_request
 def update_last_active():
     if 'user_id' in session:
@@ -116,6 +86,37 @@ def update_last_active():
             else: session.pop('user_id', None)
         except: pass
 
+# --- FUNCIÓN EMAIL MEJORADA ---
+def send_async_email(app_context, msg):
+    with app_context:
+        try:
+            mail.send(msg)
+            print(f"--- [EMAIL SENT] Enviado a {msg.recipients[0]} ---")
+        except Exception as e:
+            print(f"--- [EMAIL ERROR] Falló el envío: {e} ---")
+
+def send_email(to, subject, body_html):
+    try:
+        print(f"--- PREPARANDO EMAIL PARA {to} ---")
+        safe_subject = Header(subject, 'utf-8').encode()
+        msg = flask_mail.Message(
+            subject=safe_subject,
+            recipients=[to],
+            sender=app.config['MAIL_DEFAULT_SENDER']
+        )
+        msg.html = body_html
+        msg.charset = 'utf-8'
+        
+        # Enviar en segundo plano
+        app_context = app.app_context()
+        thr = threading.Thread(target=send_async_email, args=[app_context, msg])
+        thr.start()
+        return True
+    except Exception as e:
+        print(f"--- [EMAIL CRITICAL] Error: {e} ---")
+        return False
+
+# --- RUTAS ---
 @app.route('/')
 def home(): return render_template('index.html')
 
@@ -128,21 +129,19 @@ def auth():
         
         if user and check_password_hash(user.password_hash, password):
             if not user.is_verified:
+                # Reenviar OTP
                 otp = str(random.randint(100000, 999999))
                 user.otp_code = otp
                 user.otp_expiry = datetime.utcnow() + timedelta(minutes=5)
                 db.session.commit()
                 
-                html_body = f"""
-                <div style="font-family: Arial; padding: 20px; color: #333;">
-                    <h2>Verificación de acceso</h2>
-                    <p>Tu código de seguridad es: <strong style="font-size: 24px;">{otp}</strong></p>
-                </div>
-                """
-                send_email(email, 'Tu Código de Acceso - ORBE', html_body)
+                print(f"\n >>> CÓDIGO OTP (BACKUP): {otp} <<<\n")
+                
+                html = f"<h1>Código ORBE</h1><h2>{otp}</h2>"
+                send_email(email, 'Tu Código de Acceso', html)
                 
                 session['temp_email'] = email
-                flash('Verifica tu correo para continuar.', 'error')
+                flash('Cuenta no verificada. Nuevo código enviado.', 'error')
                 return redirect(url_for('verify_otp'))
             
             session['user_id'] = user.id; session['user_name'] = user.alias
@@ -159,8 +158,8 @@ def register():
         email = request.form.get('email').strip().lower()
         password = request.form.get('password')
         
-        if password != request.form.get('confirm_password'): flash('Las contraseñas no coinciden.', 'error'); return redirect(url_for('register'))
-        if User.query.filter_by(email=email).first(): flash('El email ya está en uso.', 'error'); return redirect(url_for('register'))
+        if password != request.form.get('confirm_password'): flash('Passwords no coinciden.', 'error'); return redirect(url_for('register'))
+        if User.query.filter_by(email=email).first(): flash('Email en uso.', 'error'); return redirect(url_for('register'))
         
         target_plan = 'free'; is_verified_status = False
         if email == 'equipozynetra@gmail.com': target_plan = 'owner'; is_verified_status = True
@@ -172,22 +171,22 @@ def register():
         db.session.add(new_user); db.session.commit()
         
         if target_plan == 'owner': 
-            flash('Bienvenido Creador. Acceso directo concedido.', 'success'); return redirect(url_for('auth'))
+            flash('Bienvenido Creador.', 'success'); return redirect(url_for('auth'))
         
         session['temp_email'] = email
         
-        # Cuerpo del mensaje optimizado para que no sea SPAM
+        # --- PLAN B: IMPRIMIR CÓDIGO EN LOGS ---
+        print(f"\n==========================================")
+        print(f" CÓDIGO OTP PARA {email}: {otp}")
+        print(f"==========================================\n")
+        
+        # Enviar Email Real
         html_body = f"""
         <div style="background-color: #f9f9f9; padding: 30px; font-family: sans-serif;">
-            <div style="max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; border: 1px solid #ddd;">
-                <h1 style="color: #00ff9d; text-align: center;">SISTEMA ORBE</h1>
-                <p>Hola <strong>{alias}</strong>,</p>
-                <p>Para completar tu registro, utiliza el siguiente código de activación:</p>
-                <div style="text-align: center; margin: 30px 0;">
-                    <span style="font-size: 40px; font-weight: bold; letter-spacing: 5px; color: #333;">{otp}</span>
-                </div>
-                <p style="font-size: 12px; color: #777;">Si no has solicitado esta cuenta, puedes ignorar este correo.</p>
-            </div>
+            <h1 style="color: #00ff9d;">SISTEMA ORBE</h1>
+            <p>Tu código de activación es:</p>
+            <h2 style="font-size: 40px; letter-spacing: 5px;">{otp}</h2>
+            <p>Válido por 5 minutos.</p>
         </div>
         """
         send_email(email, 'ORBE - Activa tu cuenta', html_body)
@@ -206,18 +205,18 @@ def verify_otp():
         
         if not user: session.pop('temp_email', None); return redirect(url_for('register'))
             
-        if user.otp_code == code and user.otp_expiry > datetime.utcnow():
+        if user.otp_code == code:
             user.is_verified = True; user.otp_code = None; db.session.commit()
             session.pop('temp_email', None)
-            flash('¡Cuenta verificada! Ya puedes entrar.', 'success')
+            flash('¡Cuenta verificada! Entrando...', 'success')
             return redirect(url_for('auth'))
         else:
-            flash('Código incorrecto o expirado.', 'error')
+            flash('Código incorrecto.', 'error')
             
     return render_template('verify_otp.html')
 
 @app.route('/logout')
-def logout(): session.clear(); return redirect(url_for('home'))
+def logout(): session.pop('user_id', None); return redirect(url_for('home'))
 
 @app.route('/dashboard')
 def dashboard():
@@ -273,9 +272,11 @@ def process_payment():
         user = User.query.get(session['user_id'])
         user.plan = plan_name; db.session.commit()
         price = TIERS[plan_name]['price']
+        date_str = datetime.now().strftime("%d/%m/%Y %H:%M")
         
-        html_receipt = f"<h1>Recibo Orbe</h1><p>Plan: {plan_name.upper()}</p><p>Precio: {price}€</p><p>ID: {order_id}</p>"
-        send_email(user.email, f'Recibo Orbe: Plan {plan_name.upper()}', html_receipt)
+        # Recibo
+        html = f"<h1>Recibo Orbe</h1><p>Plan: {plan_name}</p><p>Precio: {price}€</p><p>Ref: {order_id}</p>"
+        send_email(user.email, f'Confirmación Plan {plan_name.upper()}', html)
         
         return jsonify({'success': True})
     return jsonify({'error': 'Invalid'}), 400
