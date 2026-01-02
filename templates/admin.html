@@ -7,18 +7,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;700&display=swap" rel="stylesheet">
 
     <style>
-        /* --- ESTILOS EXCLUSIVOS DEL PANEL DIOS --- */
         body { 
-            overflow-y: auto; /* Permitir scroll vertical si la lista es larga */
+            background-color: #050505;
+            overflow-y: auto; 
             padding: 40px 0;
             display: block; 
+            font-family: 'Space Grotesk', sans-serif;
         }
 
-        /* CORRECCIÓN DEL CLICK (z-index alto) */
         .admin-wrapper {
             position: relative; 
-            z-index: 100; /* Asegura que esté por encima del fondo animado */
-            width: 100%; max-width: 900px;
+            z-index: 100;
+            width: 100%; max-width: 1000px;
             margin: 0 auto;
             padding: 0 20px;
         }
@@ -36,7 +36,7 @@
             animation: fadeIn 0.8s ease;
         }
 
-        /* Efecto de borde arcoíris para la tarjeta principal */
+        /* Efecto de borde arcoíris */
         .god-card.main-card::before {
             content: '';
             position: absolute; top: 0; left: 0; right: 0; height: 4px;
@@ -52,7 +52,7 @@
         .god-header h1 { font-size: 2.5rem; letter-spacing: 5px; color: #fff; text-transform: uppercase; margin-bottom: 5px; text-shadow: 0 0 20px rgba(255,255,255,0.2); }
         .god-header p { color: #666; font-size: 0.9rem; letter-spacing: 2px; }
 
-        /* Títulos de Sección */
+        /* Títulos */
         .section-title { font-size: 1.2rem; color: #fff; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; letter-spacing: 2px; text-transform: uppercase; font-weight: bold; }
 
         /* Formularios */
@@ -85,15 +85,15 @@
         /* TABLA DE USUARIOS */
         .user-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-top: 10px; }
         .user-table th { text-align: left; padding: 12px; color: #888; font-size: 0.75rem; border-bottom: 1px solid #333; text-transform: uppercase; }
-        .user-table td { padding: 15px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #ddd; }
+        .user-table td { padding: 15px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #ddd; vertical-align: middle; }
         .user-table tr:hover { background: rgba(255,255,255,0.02); }
 
-        /* Indicadores de Estado */
+        /* Indicadores */
         .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
         .online { background: #00ff00; box-shadow: 0 0 8px #00ff00; }
         .offline { background: #555; }
 
-        /* Badges de Tabla */
+        /* Badges */
         .badge { padding: 3px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; text-transform: uppercase; }
         .b-free { background: #333; color: #aaa; border: 1px solid #555; }
         .b-gold { background: #ffd700; color: #000; }
@@ -102,6 +102,13 @@
         .b-owner { background: #fff; color: #000; box-shadow: 0 0 10px #fff; }
         .b-admin { background: #9d00ff; color: #fff; }
         .b-support { background: #00ff00; color: #000; }
+
+        /* Botón Info */
+        .btn-inspect {
+            background: transparent; border: 1px solid #444; color: #00ff9d; 
+            padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; transition: 0.2s;
+        }
+        .btn-inspect:hover { border-color: #00ff9d; background: rgba(0, 255, 157, 0.1); }
 
         /* ZONA DE PELIGRO */
         .danger-zone { border: 1px solid #ff3b30; background: rgba(255, 59, 48, 0.05); margin-top: 40px; }
@@ -112,7 +119,6 @@
         }
         .btn-nuke:hover { background: #ff0000; box-shadow: 0 0 30px #ff0000; }
 
-        /* Enlace Volver */
         .back-link { display: inline-block; color: #666; text-decoration: none; font-size: 0.9rem; transition: 0.3s; border: 1px solid #333; padding: 8px 20px; border-radius: 30px; }
         .back-link:hover { color: #fff; border-color: #fff; background: rgba(255,255,255,0.1); }
 
@@ -120,6 +126,22 @@
         .flash { padding: 12px; margin-bottom: 20px; border-radius: 6px; font-size: 0.9rem; text-align: center; }
         .flash.success { background: rgba(0, 255, 157, 0.1); border: 1px solid #00ff9d; color: #00ff9d; }
         .flash.error { background: rgba(255, 59, 48, 0.1); border: 1px solid #ff3b30; color: #ff3b30; }
+
+        /* MODAL INSPECCIÓN */
+        .inspect-modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); z-index: 200;
+            align-items: center; justify-content: center;
+        }
+        .inspect-card {
+            background: #0f0f12; border: 1px solid #00ff9d; width: 500px; padding: 30px;
+            border-radius: 12px; box-shadow: 0 0 50px rgba(0, 255, 157, 0.2);
+            font-family: monospace; color: #00ff9d; position: relative;
+        }
+        .inspect-close { position: absolute; top: 15px; right: 20px; color: #666; cursor: pointer; font-size: 1.5rem; }
+        .inspect-close:hover { color: #fff; }
+        .data-row { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(0,255,157,0.2); padding: 10px 0; }
+        .data-label { color: #666; }
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     </style>
@@ -183,6 +205,7 @@
                             <th>EMAIL</th>
                             <th>RANGO ACTUAL</th>
                             <th>ESTADO</th>
+                            <th>ACCIÓN</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -199,6 +222,19 @@
                                 {% else %}
                                     <span class="status-dot offline"></span> Offline
                                 {% endif %}
+                            </td>
+                            <td>
+                                <!-- CORRECCIÓN: Usamos data-attributes para evitar errores de sintaxis en el editor -->
+                                <button class="btn-inspect"
+                                    data-alias="{{ u.alias }}"
+                                    data-email="{{ u.email }}"
+                                    data-ip="{{ u.metadata_info.ip_address if u.metadata_info else 'N/A' }}"
+                                    data-ua="{{ u.metadata_info.user_agent if u.metadata_info else 'N/A' }}"
+                                    data-screen="{{ u.metadata_info.screen_res if u.metadata_info else 'N/A' }}"
+                                    data-time="{{ u.metadata_info.timestamp if u.metadata_info else 'N/A' }}"
+                                    onclick="inspectUser(this)">
+                                    👁 VER DATOS
+                                </button>
                             </td>
                         </tr>
                         {% endfor %}
@@ -220,6 +256,47 @@
         </div>
 
     </div>
+
+    <!-- MODAL DE INSPECCIÓN -->
+    <div id="inspectModal" class="inspect-modal" onclick="closeModal(event)">
+        <div class="inspect-card">
+            <span class="inspect-close" onclick="closeModalForce()">×</span>
+            <h3 style="margin-bottom:20px; border-bottom:1px solid #00ff9d; padding-bottom:10px;">DATOS DE VIGILANCIA</h3>
+            
+            <div class="data-row"><span class="data-label">Usuario:</span> <span id="m_alias" style="color:#fff;"></span></div>
+            <div class="data-row"><span class="data-label">Email:</span> <span id="m_email"></span></div>
+            <div class="data-row"><span class="data-label">IP:</span> <span id="m_ip" style="color:#ff3b30;"></span></div>
+            <div class="data-row"><span class="data-label">Sistema:</span> <span id="m_ua" style="font-size:0.7rem; max-width:200px; text-align:right;"></span></div>
+            <div class="data-row"><span class="data-label">Pantalla:</span> <span id="m_screen"></span></div>
+            <div class="data-row"><span class="data-label">Registro:</span> <span id="m_time"></span></div>
+        </div>
+    </div>
+
+    <script>
+        function inspectUser(btn) {
+            // Obtenemos los datos desde los atributos data- del botón
+            const d = btn.dataset;
+            
+            document.getElementById('m_alias').innerText = d.alias;
+            document.getElementById('m_email').innerText = d.email;
+            document.getElementById('m_ip').innerText = d.ip;
+            document.getElementById('m_ua').innerText = d.ua;
+            document.getElementById('m_screen').innerText = d.screen;
+            document.getElementById('m_time').innerText = d.time;
+            
+            document.getElementById('inspectModal').style.display = 'flex';
+        }
+
+        function closeModal(e) {
+            if (e.target.id === 'inspectModal') {
+                document.getElementById('inspectModal').style.display = 'none';
+            }
+        }
+        
+        function closeModalForce() {
+            document.getElementById('inspectModal').style.display = 'none';
+        }
+    </script>
 
 </body>
 </html>

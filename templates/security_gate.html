@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ORBE | Neural Gate</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;700&display=swap" rel="stylesheet">
+    <style>
+        body { margin: 0; padding: 0; background: #050505; color: #fff; font-family: 'Space Grotesk', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; user-select: none; }
+        .gate-wrapper { position: relative; width: 300px; text-align: center; }
+        .gate-title { font-size: 1.5rem; letter-spacing: 4px; margin-bottom: 3rem; color: #888; text-transform: uppercase; }
+        .scanner-btn { width: 180px; height: 180px; margin: 0 auto; border-radius: 50%; background: radial-gradient(circle, #1a1a1a, #000); position: relative; display: flex; justify-content: center; align-items: center; cursor: pointer; box-shadow: 0 0 20px rgba(255, 255, 255, 0.05); transition: 0.2s; -webkit-tap-highlight-color: transparent; }
+        .scanner-btn:active { transform: scale(0.95); }
+        .fingerprint { font-size: 60px; color: #444; transition: 0.3s; }
+        .scanning .fingerprint { color: #00ff9d; animation: pulse 0.5s infinite; }
+        .progress-ring { position: absolute; top: -10px; left: -10px; width: 200px; height: 200px; transform: rotate(-90deg); pointer-events: none; }
+        .progress-ring__circle { stroke: #00ff9d; stroke-width: 4; fill: transparent; stroke-dasharray: 600; stroke-dashoffset: 600; transition: stroke-dashoffset 0.1s linear; }
+        .status { margin-top: 40px; font-size: 0.8rem; color: #666; letter-spacing: 2px; height: 20px; }
+        .data-console { margin-top: 30px; text-align: left; font-family: monospace; font-size: 0.7rem; color: #00ff9d; background: rgba(0, 255, 157, 0.05); padding: 15px; border-radius: 6px; height: 120px; overflow: hidden; border: 1px solid rgba(0, 255, 157, 0.2); display: none; }
+        .data-line { margin-bottom: 4px; opacity: 0; animation: fadeIn 0.1s forwards; }
+        @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; text-shadow: 0 0 20px #00ff9d; } 100% { opacity: 0.5; } }
+        @keyframes fadeIn { to { opacity: 1; } }
+        .success-mode .scanner-btn { border-color: #00ff9d; box-shadow: 0 0 50px #00ff9d; }
+    </style>
+</head>
+<body>
+    <div class="gate-wrapper">
+        <div class="gate-title">ORBE GATEWAY</div>
+        <div class="scanner-btn" id="scanner">
+            <svg class="progress-ring"><circle class="progress-ring__circle" r="90" cx="100" cy="100"/></svg>
+            <div class="fingerprint">◎</div>
+        </div>
+        <div class="status" id="statusText">MANTENGA PULSADO PARA VERIFICAR</div>
+        <div class="data-console" id="console"></div>
+    </div>
+    <script>
+        const btn = document.getElementById('scanner'), circle = document.querySelector('.progress-ring__circle'), statusText = document.getElementById('statusText'), consoleDiv = document.getElementById('console'), fingerprint = document.querySelector('.fingerprint');
+        let progress = 600, interval, consoleInterval, isComplete = false;
+        
+        // Recopilar datos reales
+        const collectedData = {
+            ua: navigator.userAgent,
+            screen: `${screen.width}x${screen.height}`,
+            lang: navigator.language,
+            time: Intl.DateTimeFormat().resolvedOptions().timeZone
+        };
+
+        const userDataDisplay = [`> SYSTEM: ${navigator.platform.toUpperCase()}`, `> AGENT: ${navigator.userAgent.substring(0, 20)}...`, `> LANG: ${navigator.language.toUpperCase()}`, `> SCREEN: ${screen.width}x${screen.height}`, "> ENCRYPTING...", "> UPLOADING METADATA...", "> ACCESS GRANTED."];
+        
+        const start = (e) => { 
+            if(isComplete)return; e.preventDefault(); 
+            btn.classList.add('scanning'); consoleDiv.style.display='block'; statusText.innerText="ESCANEARDO..."; statusText.style.color="#fff"; 
+            
+            interval = setInterval(() => { 
+                progress -= 10; circle.style.strokeDashoffset = progress; 
+                if(progress<=0) complete(); 
+            }, 30); // Un poco más rápido para UX
+
+            let i=0; consoleDiv.innerHTML=""; 
+            consoleInterval=setInterval(()=>{ 
+                if(i<userDataDisplay.length){ 
+                    const p=document.createElement('div'); p.className='data-line'; p.innerText=userDataDisplay[i]; 
+                    consoleDiv.appendChild(p); consoleDiv.scrollTop=consoleDiv.scrollHeight; i++; 
+                } 
+            }, 250); 
+        };
+        
+        const stop = () => { if(isComplete)return; clearInterval(interval); clearInterval(consoleInterval); progress=600; circle.style.strokeDashoffset=600; btn.classList.remove('scanning'); statusText.innerText="CANCELADO"; statusText.style.color="#ff3b30"; setTimeout(()=>{ if(!isComplete){statusText.innerText="MANTENGA PULSADO"; statusText.style.color="#666"; consoleDiv.style.display='none';} }, 1000); };
+        
+        const complete = () => { 
+            isComplete=true; clearInterval(interval); clearInterval(consoleInterval); 
+            document.body.classList.add('success-mode'); fingerprint.innerText="✔"; fingerprint.style.color="#00ff9d"; statusText.innerText="IDENTIDAD CONFIRMADA"; statusText.style.color="#00ff9d"; 
+            
+            // Enviamos los datos recolectados al backend
+            fetch('/api/verify_gate', {
+                method:'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(collectedData)
+            })
+            .then(r=>r.json())
+            .then(d=>{ if(d.success) setTimeout(()=>{window.location.href="{{ url_for('dashboard') }}"},800); }); 
+        };
+
+        btn.addEventListener('mousedown', start); btn.addEventListener('touchstart', start);
+        btn.addEventListener('mouseup', stop); btn.addEventListener('mouseleave', stop); btn.addEventListener('touchend', stop);
+    </script>
+</body>
+</html>
